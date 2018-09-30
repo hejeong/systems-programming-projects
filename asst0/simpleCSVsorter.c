@@ -42,7 +42,7 @@ int main(int argc, char* argv[]){
   }
  
   int row_count = 0;
-  node* rows = (node *)calloc(row_count, sizeof(node));
+  node** rows = malloc(sizeof(node *));
   // reads from stdin until end of file
   while(fgets(line, sizeof line, fpointer) != NULL){
     // find first link
@@ -65,15 +65,15 @@ int main(int argc, char* argv[]){
       prev = newNode;
    }
    row_count++;
-   rows = (node *)realloc(rows, sizeof(node)*row_count);
-   rows[row_count-1] = *head;
- }
-
-  int i;
-  for(i = 0; i < row_count; i++){
-    printf("Row %d: %s\n", i, rows[i].value); 
-  }
-  printf("%d\n", row_count); 
+   node* current = head;
+   rows = realloc(rows,sizeof(node *)*row_count);
+   rows[row_count-1] = current;
+   }
+ 
+   int i;
+   for(i = 0; i < row_count; i++){
+     printf("Row %d: %s\n", row_count, rows[i]->value); 
+   }
 free(rows);
    
  return 0;
