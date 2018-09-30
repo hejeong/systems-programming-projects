@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "simpleCSVsorter.h"
+#include "sorter.h"
 
 int main(int argc, char* argv[]){
   // create file pointer
@@ -43,39 +43,28 @@ int main(int argc, char* argv[]){
  
   int row_count = 0;
 
-  node** rows = calloc(row_count, sizeof(node));
   // reads from stdin until end of file
   while(fgets(line, sizeof line, fpointer) != NULL){
     // find first link
-    node* head;
-    node* prev;
+    struct node* head;
+    struct node* prev;
     token = strtok(line, ",");
-    head = malloc(sizeof(node));
+    head = malloc(sizeof(struct node));
     head->value = token;
     head->next = NULL;
     prev = head;
  
- //   printf("Row %d: %s\n",row_count, token);
     while(token) {
       // find next token and add to linked list
       token = strtok(NULL,",");
-      node* newNode = malloc(sizeof(node));
+      struct node* newNode = malloc(sizeof(struct node));
       prev->next = newNode;
       newNode->value = token;
       newNode->next = NULL;
       prev = newNode;
    }
    row_count++;
-   node* current = head;
-   rows = realloc(rows,sizeof(node *)*row_count);
-   rows[row_count-1] = current;
-   }
+ }
  
-   int i;
-   for(i = 0; i < row_count; i++){
-//     printf("Row %d: %s\n", row_count, rows[i]->next->value); 
-   }
-free(rows);
-   
  return 0;
 }
