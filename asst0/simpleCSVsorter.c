@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "sorter.h"
+#include "simpleCSVsorter.h"
+
 
 int main(int argc, char* argv[]){
   // create file pointer

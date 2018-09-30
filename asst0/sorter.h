@@ -1,18 +1,3 @@
-struct head
-{
-	struct node* row;
-	int index;
-	struct head* next;
-	char* value;
-};
-
-struct node 
-{
-	struct node* next;
-	int pos;
-	char* value;
-};
-
 struct head* merge(struct head* rootL, struct head* rootR, int position)
 {
 	struct head* left = rootL;
