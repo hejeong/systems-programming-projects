@@ -43,7 +43,7 @@ int main(int argc, char* argv[]){
  
   int row_count = 0;
 
-  node** rows = (node *)calloc(row_count, sizeof(node));
+  node** rows = calloc(row_count, sizeof(node));
   // reads from stdin until end of file
   while(fgets(line, sizeof line, fpointer) != NULL){
     // find first link
@@ -73,7 +73,7 @@ int main(int argc, char* argv[]){
  
    int i;
    for(i = 0; i < row_count; i++){
-     printf("Row %d: %s\n", row_count, rows[i]->value); 
+//     printf("Row %d: %s\n", row_count, rows[i]->next->value); 
    }
 free(rows);
    
