@@ -4,14 +4,14 @@ struct head
 	int index;
 	struct head* next;
 	char* value;
-}
+};
 
 struct node 
 {
 	struct node* next;
 	int pos;
 	char* value;
-}
+};
 
 struct head* sort(struct head* root, int size, int position)
 {

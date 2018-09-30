@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "sorter.h"
+#include "simpleCSVsorter.h"
 
 int main(int argc, char* argv[]){
   // create file pointer
@@ -42,29 +42,47 @@ int main(int argc, char* argv[]){
   }
  
   int row_count = 0;
-
+  // create top node for row
   // reads from stdin until end of file
   while(fgets(line, sizeof line, fpointer) != NULL){
-    // find first link
-    struct node* head;
-    struct node* prev;
     token = strtok(line, ",");
-    head = malloc(sizeof(struct node));
-    head->value = token;
-    head->next = NULL;
-    prev = head;
- 
+    struct node** head_per_row;
+    struct node** prev;
+    struct node* newNode = (struct node*)malloc(sizeof(struct node));
+    newNode->next = NULL;
+    newNode->value = token;
+    head_per_row = &newNode;
+    prev = head_per_row;
+    printf("Row %d: %s, %p\n",row_count, (*head_per_row)->value, (*head_per_row)); 
     while(token) {
       // find next token and add to linked list
       token = strtok(NULL,",");
-      struct node* newNode = malloc(sizeof(struct node));
-      prev->next = newNode;
-      newNode->value = token;
-      newNode->next = NULL;
-      prev = newNode;
-   }
+      struct node* nextNode = (struct node*)malloc(sizeof(struct node));
+      nextNode->next = NULL;
+      nextNode->value = token;
+      (*prev)->next = nextNode;
+      prev = &nextNode; 
+    } 
    row_count++;
+   int i;
+   struct node* current = *head_per_row;
+   printf("Row %d: ", row_count);
+   for(i = 0; i< count; i++){
+     printf("%s ", current->value);
+     current = current->next;
+   }
+   printf("\n");
  }
+
+// int i;
+//struct head* current = top_row;
+//printf("Current = %p\n", current->row->value);
+//current = current->next;
+//printf("Next = %p\n", current->row->value);
+//for(i=0; i<row_count-1; i++){
+//  printf("Row %d: %p\n", i, current->row->value);
+//  current = current->next;
+//}
  
  return 0;
 }
