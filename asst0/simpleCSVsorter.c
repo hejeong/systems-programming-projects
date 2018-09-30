@@ -42,14 +42,14 @@ int main(int argc, char* argv[]){
   }
  
   int row_count = 0;
-  node* rows = (node *)calloc(row_count, sizeof(node));
+  node** rows = (node *)calloc(row_count, sizeof(node));
   // reads from stdin until end of file
   while(fgets(line, sizeof line, fpointer) != NULL){
     // find first link
     node* head;
     node* prev;
     token = strtok(line, ",");
-    head = (node *)malloc(sizeof(node));
+    head = malloc(sizeof(node));
     head->value = token;
     head->next = NULL;
     prev = head;
@@ -58,7 +58,7 @@ int main(int argc, char* argv[]){
     while(token) {
       // find next token and add to linked list
       token = strtok(NULL,",");
-      node* newNode = (node *)malloc(sizeof(node));
+      node* newNode = malloc(sizeof(node));
       prev->next = newNode;
       newNode->value = token;
       newNode->next = NULL;
