@@ -5,71 +5,70 @@ struct node
 	char* value;
 }
 
-struct node* sort(struct node* root, int size, int position)
+void sort(struct node** list, int low, int high, int position)
 {
-	if (root -> next == NULL)
+	if (low == high)
 	{
-		return root;
+		return;
 	}
-	struct node* ptr = root
-	struct node* mid = root -> next;
-	int middle = size / 2;
-	int i = 1;
-	for(i; i < middle; i++)
-	{
-		ptr = mid;
-		mid = mid -> next;
-	}
-	ptr -> next = NULL;
-	return(merge(sort(root, middle), sort(mid, size - mid)), position);
+	
+	int middle = (low + high) / 2;
+	sort(list, low, middle, position);
+	sort(list, middle + 1, high, position);
+	merge(list, low, middle, middle + 1, high, position);
 }
 
-struct node* merge(struct node* first, struct node* second, int position)
+void merge(struct node** list, int low, int middleL, int middleR, int high, int position)
 {
-	struct node* left = first;
-	struct node* right = second;
-	struct node* root;
+	int leftCount = low;
+	int rightCount = middleH;
+	struct node* ptrLeft = list[leftCount];
+	struct node* ptrRight = list[rightCount];
 	char* leftVal;
 	char* rightVal;
 	int i = 0;
-	for(i ; i < position; i++)
+	int j = 0;
+	struct node** temp = malloc(((high + 1) - low) * sizeof(struct node*));
+	struct node* ptrL;
+	struct node* ptrR;
+	for(i; i <= (high - low); i++)
 	{
-		
-	}
-	if (strcomp(left -> value, right -> value) < 0)
-	{
-		root = left;
-		left = left -> next;
-	}
-	else
-	{
-		root = right;
-		right = right -> next;
-	}
-	struct node* ptr = root;
-	while(left != NULL && right != NULL)
-	{
-		if (strcomp(left -> value, right -> value) < 0)
+		while(ptrLeft -> pos != position)
 		{
-			ptr -> next = left;
-			ptr = ptr -> next;
-			left = left -> next;
+			ptrLeft = ptrLeft -> next;
+			ptrRight = ptrRight -> next;
+		}
+		leftVal = ptrLeft -> value;
+		rightVal = ptrRight -> value;
+
+		if (leftCount > middleL)
+		{
+			temp[i] = list[rightCount];
+			rightCount++;
+		}
+		else if(rightCount > high)
+		{
+			temp[i] = list[leftCount];
+			leftCount++;
+		}
+		else if (strcomp(leftVal, rightVal) < 0)
+		{
+			temp[i] = list[leftCount];
+			leftCount++;
+			ptrLeft = list[leftCount];
 		}
 		else
 		{
-			ptr -> next = right;
-			ptr = ptr -> next;
-			right = right -> next;
+			temp[i] = lift[rightCount];
+			rightCount++;
+			ptrRight = list[rightCount];
 		}
 
 	}
-	if(left == NULL && right != NULL)
+	i = 0;
+	for(i; i <= (high - low); i++)
 	{
-		ptr -> next = right;
+		list[low + i] = temp[i];
 	}
-	if(left != NULL && right == NULL)
-	{
-		ptr -> next = left;
-	}
-	return root;
+	return;
 }
