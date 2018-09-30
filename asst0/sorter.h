@@ -13,26 +13,6 @@ struct node
 	char* value;
 };
 
-struct head* sort(struct head* root, int size, int position)
-{
-	if (root -> next == NULL)
-	{
-		return root;
-	}
-	
-	struct node* ptr = root
-	struct node* mid = root -> next;
-	int middle = size / 2;
-	for(i; i < middle; i++)
-	{
-		ptr = mid;
-		mid = mid -> next;
-	}
-	ptr -> next = NULL;
-	
-	return(merge(sort(root, middle), sort(mid, size - mid)), position);
-}
-
 struct head* merge(struct head* rootL, struct head* rootR, int position)
 {
 	struct head* left = rootL;
@@ -87,6 +67,28 @@ struct head* merge(struct head* rootL, struct head* rootR, int position)
 	{
 		ptr -> next = left;
 	}
-	i = 0;
+
 	return root;
+}
+
+struct head* sort(struct head* root, int size, int position)
+{
+	if (root -> next == NULL)
+	{
+		return root;
+	}
+	
+	int i = 0;
+	struct head* ptr = root;
+	struct head* mid = root -> next;
+	int middle = size / 2;
+	for(i; i < middle; i++)
+	{
+		ptr = mid;
+		mid = mid -> next;
+	}
+	ptr -> next = NULL;
+	
+	struct head* sorted = merge(sort(root, middle, position), sort(mid, size - middle, position), position);
+	return(sorted);
 }
