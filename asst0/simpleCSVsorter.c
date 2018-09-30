@@ -3,6 +3,7 @@
 #include <string.h>
 #include "simpleCSVsorter.h"
 
+
 int main(int argc, char* argv[]){
   // create file pointer
   FILE* fpointer;
