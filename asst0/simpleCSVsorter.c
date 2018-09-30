@@ -43,46 +43,52 @@ int main(int argc, char* argv[]){
  
   int row_count = 0;
   // create top node for row
+  struct head* topRow;
+  struct head* prevRow;
   // reads from stdin until end of file
   while(fgets(line, sizeof line, fpointer) != NULL){
     token = strtok(line, ",");
-    struct node** head_per_row;
-    struct node** prev;
+    struct node* head_per_row;
+    struct node* prev;
     struct node* newNode = (struct node*)malloc(sizeof(struct node));
     newNode->next = NULL;
     newNode->value = token;
-    head_per_row = &newNode;
-    prev = head_per_row;
-    printf("Row %d: %s, %p\n",row_count, (*head_per_row)->value, (*head_per_row)); 
+    head_per_row = newNode;
+    prev = head_per_row; 
+   // printf("Row %d: %s, %p\n",row_count, (*head_per_row)->value, (*head_per_row)); 
     while(token) {
       // find next token and add to linked list
       token = strtok(NULL,",");
       struct node* nextNode = (struct node*)malloc(sizeof(struct node));
       nextNode->next = NULL;
       nextNode->value = token;
-      (*prev)->next = nextNode;
-      prev = &nextNode; 
+      prev->next = nextNode;
+      prev = nextNode; 
     } 
-   row_count++;
-   int i;
-   struct node* current = *head_per_row;
-   printf("Row %d: ", row_count);
-   for(i = 0; i< count; i++){
-     printf("%s ", current->value);
-     current = current->next;
-   }
-   printf("\n");
+    row_count++;
+/*    printf("Row %d: ", row_count);
+    struct node* current = head_per_row;
+    while(current->next != NULL){
+      printf("%s ", current->value);
+      current = current->next;
+    }
+    printf("\n"); */
+    
+    struct head* newHead = (struct head*)malloc(sizeof(struct head));
+    newHead->next = NULL;
+    newHead->row = head_per_row;
+    //printf("Row %d: %s\n"  , row_count, newHead->row->value);
+    if(row_count == 1){
+     topRow = newHead;
+     prevRow = newHead; 
+    }else{
+      prevRow->next = newHead;
+      prevRow = prevRow->next;
+    } 
  }
 
-// int i;
-//struct head* current = top_row;
-//printf("Current = %p\n", current->row->value);
-//current = current->next;
-//printf("Next = %p\n", current->row->value);
-//for(i=0; i<row_count-1; i++){
-//  printf("Row %d: %p\n", i, current->row->value);
-//  current = current->next;
-//}
- 
+
+
+ free(topRow); 
  return 0;
 }

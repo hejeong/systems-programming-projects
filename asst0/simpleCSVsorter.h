@@ -8,9 +8,3 @@ struct node{
    struct node* next;
 };
 
-struct node* createNode(){
- struct node* newNode = (struct node*)malloc(sizeof(struct node));
-
- newNode->next = NULL;
- return newNode;
-}
