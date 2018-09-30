@@ -37,10 +37,17 @@ struct head* merge(struct head* rootL, struct head* rootR, int position)
 //	}
 //	leftVal = ptrLeft -> value;
 //	rightVal = ptrRight -> value;
+
+	char* s1 = left -> value;
+	char* s2 = right -> value;
 	
-	//checks if the two elements should be checked numerically or lexicographically
 	int leftIsStr = 0;
 	int rightIsStr = 0;
+	int i;
+	int leftLength = strlen(s1);
+	int rightLength = strlen(s2);
+	
+	//checks if the two elements should be checked numerically or lexicographically
 	//goes through each element of the string to see if it is a digit
 	for(i; i < leftLength; i++)
 	{
@@ -100,16 +107,16 @@ struct head* merge(struct head* rootL, struct head* rootR, int position)
 	//iterates through all the nodes in both elements and adds whichever one is lower to the sorted linked list
 	while(left != NULL && right != NULL)
 	{
-		char* s1 = left -> value;
-		char* s2 = right -> value;
+		s1 = left -> value;
+		s2 = right -> value;
 		
 		leftIsStr = 0;
 		rightIsStr = 0;
 		
 		int i = 0;
 		
-		int leftLength = strlen(s1);
-		int rightLength = strlen(s2);
+		leftLength = strlen(s1);
+		rightLength = strlen(s2);
 		
 		//the same process from before to check if either is a string
 		for(i; i < leftLength; i++)
