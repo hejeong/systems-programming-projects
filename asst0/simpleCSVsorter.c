@@ -46,26 +46,47 @@ int main(int argc, char* argv[]){
   // create top node for row
   struct head* topRow;
   struct head* prevRow;
+  struct head* newHead;
+  struct node* head_per_row;
+  struct node* prev;
+  struct node* newNode;
+  char* val;
   // reads from stdin until end of file
   while(fgets(line, sizeof line, fpointer) != NULL){
     token = strtok(line, ",");
-    struct node* head_per_row;
-    struct node* prev;
-    struct node* newNode = (struct node*)malloc(sizeof(struct node));
-    newNode->next = NULL;
-    newNode->value = token;
-    head_per_row = newNode;
+    head_per_row = (struct node*)malloc(sizeof(struct node));
+	val = malloc((strlen(token) + 1) * sizeof(char));
+	if(val != NULL)
+	{
+		strcpy(val, token);
+	}
+	else
+	{
+		val = NULL;
+	}
+    head_per_row->next = NULL;
+    head_per_row->value = val;
     prev = head_per_row; 
    // printf("Row %d: %s, %p\n",row_count, (*head_per_row)->value, (*head_per_row)); 
     while(token) {
-      // find next token and add to linked list
-      token = strtok(NULL,",");
-      struct node* nextNode = (struct node*)malloc(sizeof(struct node));
-      nextNode->next = NULL;
-      nextNode->value = token;
-      prev->next = nextNode;
-      prev = nextNode; 
+     // find next token and add to linked list
+     token = strtok(NULL,",");
+     struct node* nextNode = (struct node*)malloc(sizeof(struct node));
+	 val = malloc((strlen(token) + 1) * sizeof(char));
+		if(val != NULL)
+		{
+		strcpy(val, token);
+		}
+		else
+		{
+			val = NULL;
+		}
+		nextNode->next = NULL;
+		nextNode->value = val;
+		prev->next = nextNode;
+		prev = nextNode; 
     } 
+
     row_count++;
 /*    printf("Row %d: ", row_count);
     struct node* current = head_per_row;
@@ -75,20 +96,40 @@ int main(int argc, char* argv[]){
     }
     printf("\n"); */
     
-    struct head* newHead = (struct head*)malloc(sizeof(struct head));
-    newHead->next = NULL;
-    newHead->row = head_per_row;
+
     //printf("Row %d: %s\n"  , row_count, newHead->row->value);
+	struct head* ptr = malloc(sizeof(struct head));
+	newHead = ptr;
+	newHead->next = NULL;
+	newHead->row = head_per_row;
+	newHead->index = row_count;
+	
     if(row_count == 1){
      topRow = newHead;
-     prevRow = newHead; 
+     prevRow = topRow;
     }else{
+		//printf("%s", (prevRow -> row) -> next -> value);
       prevRow->next = newHead;
       prevRow = prevRow->next;
+		
     } 
  }
-
-
+ 	struct head* haha2 = topRow;
+	struct node* haha = topRow -> row;
+	
+	
+	while(haha2 != NULL)
+	{
+		haha = haha2 -> row;
+		while(haha != NULL)
+		{
+			printf("%s", haha -> value);
+			haha = haha -> next;
+		
+		}
+		//printf("%d\n", haha2 -> index);
+		haha2 = haha2 -> next;
+	}
 
  free(topRow); 
  return 0;
