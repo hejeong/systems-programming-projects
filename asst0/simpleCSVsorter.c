@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "simpleCSVsorter.h"
+#include "mergesort.c"
 
 
 int main(int argc, char* argv[]){
