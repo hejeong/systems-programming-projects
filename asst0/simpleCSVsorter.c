@@ -70,7 +70,10 @@ int main(int argc, char* argv[]){
    // printf("Row %d: %s, %p\n",row_count, (*head_per_row)->value, (*head_per_row)); 
     while(token) {
      // find next token and add to linked list
+	 
      token = strtok(NULL,",");
+	 if(token != NULL)
+	 { 
      struct node* nextNode = (struct node*)malloc(sizeof(struct node));
 	 val = malloc((strlen(token) + 1) * sizeof(char));
 		if(val != NULL)
@@ -84,9 +87,9 @@ int main(int argc, char* argv[]){
 		nextNode->next = NULL;
 		nextNode->value = val;
 		prev->next = nextNode;
-		prev = nextNode; 
+		prev = nextNode;
+	 }
     } 
-
     row_count++;
 /*    printf("Row %d: ", row_count);
     struct node* current = head_per_row;
