@@ -35,7 +35,6 @@ int main(int argc, char* argv[]){
     token = strtok(NULL, ",");
     count++;
   }
-
   // if sort_by still equals -1, then attribute given is not valid
   if (sort_by == -1){
     printf("Not a valid attribute.\n");
@@ -53,13 +52,13 @@ int main(int argc, char* argv[]){
   char* val;
   // reads from stdin until end of file
   while(fgets(line, sizeof line, fpointer) != NULL){
-    token = strtok(line, ",");
+    token = strsplit(line, ",");
     head_per_row = (struct node*)malloc(sizeof(struct node));
 	val = malloc((strlen(token) + 1) * sizeof(char));
 	if(val != NULL)
 	{
 		strcpy(val, token);
-	}
+        }
 	else
 	{
 		val = NULL;
@@ -71,7 +70,7 @@ int main(int argc, char* argv[]){
     while(token) {
      // find next token and add to linked list
 	 
-     token = strtok(NULL,",");
+     token = strsplit(NULL,",");
 	 if(token != NULL)
 	 { 
      struct node* nextNode = (struct node*)malloc(sizeof(struct node));
@@ -116,18 +115,22 @@ int main(int argc, char* argv[]){
  	struct head* haha2 = topRow;
 	struct node* haha = topRow -> row;
 	
-	
+        int cnt = 0;
 	while(haha2 != NULL)
-	{
+	{  cnt++; 
+           if(cnt == 275){    
+           printf("Row %d:", cnt);
 		haha = haha2 -> row;
-		while(haha != NULL)
-		{
-			printf("%s", haha -> value);
+                while(haha != NULL)
+		{       if(haha->next != NULL){
+			   printf("%s,", haha -> value);
+                        }else{
+                           printf("%s", haha->value);
+                        }
 			haha = haha -> next;
-		
-		}
+		}}
 		//printf("%d\n", haha2 -> index);
-		haha2 = haha2 -> next;
+                haha2 = haha2->next;
 	}
 
  free(topRow); 
