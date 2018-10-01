@@ -35,7 +35,6 @@ int main(int argc, char* argv[]){
     token = strtok(NULL, ",");
     count++;
   }
-
   // if sort_by still equals -1, then attribute given is not valid
   if (sort_by == -1){
     printf("Not a valid attribute.\n");
@@ -59,9 +58,7 @@ int main(int argc, char* argv[]){
 	if(val != NULL)
 	{
 		strcpy(val, token);
-                // strip the extra whitespace
-                val = strip(val);
-	}
+        }
 	else
 	{
 		val = NULL;
@@ -81,8 +78,6 @@ int main(int argc, char* argv[]){
 		if(val != NULL)
 		{
 		strcpy(val, token);
-                //strip the extra whitespace
-                val = strip(val);
 		}
 		else
 		{
@@ -124,18 +119,19 @@ int main(int argc, char* argv[]){
  	struct head* haha2 = topRow;
 	struct node* haha = topRow -> row;
 	
-	
+        int cnt = 0;
 	while(haha2 != NULL)
-	{
+	{  cnt++;
+           printf("Row %d:", cnt);
 		haha = haha2 -> row;
 		while(haha != NULL)
 		{
-			printf("%s", haha -> value);
+			printf("%s ", haha -> value);
 			haha = haha -> next;
-		
 		}
 		//printf("%d\n", haha2 -> index);
-		haha2 = haha2 -> next;
+                printf("\n");
+                haha2 = haha2->next;
 	}
 
  free(topRow); 
