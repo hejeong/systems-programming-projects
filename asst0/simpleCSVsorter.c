@@ -80,10 +80,6 @@ int main(int argc, char* argv[]){
 		{
 		strcpy(val, token);
 		}
-		else
-		{
-			val = NULL;
-		}
 		nextNode->next = NULL;
 		nextNode->value = val;
 		prev->next = nextNode;
