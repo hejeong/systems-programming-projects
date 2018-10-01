@@ -59,6 +59,8 @@ int main(int argc, char* argv[]){
 	if(val != NULL)
 	{
 		strcpy(val, token);
+                // strip the extra whitespace
+                val = strip(val);
 	}
 	else
 	{
@@ -79,6 +81,8 @@ int main(int argc, char* argv[]){
 		if(val != NULL)
 		{
 		strcpy(val, token);
+                //strip the extra whitespace
+                val = strip(val);
 		}
 		else
 		{

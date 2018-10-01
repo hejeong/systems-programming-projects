@@ -20,6 +20,25 @@ struct node* createNode(){
  return newNode;
 }
 
+// remove leading and trailling whitepspaces
+char* strip(char *string){
+  
+  char* end;
+   
+  //increment until no whitespace
+  while(isspace(*string)){
+     string++;
+  }
+  end = string + strlen(string) - 1;
+  //decrement until no whitespace
+  while (isspace(*end) && end > string) {
+     end--;
+  }
+  //add on null termination character
+  *(end+1) = '\0';
+  return string;
+}
+ 
 //the merging part of merge sort
 struct head* merge(struct head* rootL, struct head* rootR, int position)
 {
