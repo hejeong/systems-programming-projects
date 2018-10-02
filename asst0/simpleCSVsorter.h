@@ -1,15 +1,15 @@
 struct head
 {
 	struct node* row;
-	int index;
 	struct head* next;
-	char* value;
+	int index;
+	char* value; //value for easier comparison and sorting in merge sort
 };
 
 struct node 
 {
-	struct node* next;
 	int pos;
+	struct node* next;
 	char* value;
 };
 
@@ -33,16 +33,24 @@ char* strsplit(char* str){
 
   if (src == NULL){
     return NULL;
-  }  
+  }
+ // locate the first comma by matching it with src 
  comma = strpbrk(src, ",");
   if((comma) != NULL){
+	 // locate the first quotation mark 
      quote1 = strpbrk(src, "\"");
+	 // if the quotation mark comes before the comma
+	 // look for the closing quotation mark
+	 // When the second quotation mark is found,
+     //	find the comma after it to end the string
      if(quote1 != NULL && quote1 < comma){
        		quote2 = strpbrk(comma, "\"");
       	 	comma = strpbrk(quote2, ",");
      }
+	 // set to null
     *comma = 0;
-    ret = src;
+    // ret is now the beginning of src to the end before comma
+	ret = src;
     src = ++comma;
   } else if (*src){
     ret = src;

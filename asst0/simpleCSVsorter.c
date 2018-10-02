@@ -26,7 +26,7 @@ int main(int argc, char* argv[]){
   }
   fgets(line, sizeof line, fpointer);
   
-  char *token = strtok(line, ",");
+  char *token = strsplit(line);
   // count number of columns starting at 0
   int count = 0;
   // sort_by is the index number that represents which attribute to sort by
@@ -52,7 +52,7 @@ struct node* tempPtr = categories;
 	temp -> value = val;
 	tempPtr -> next = temp;
 	tempPtr = tempPtr -> next;
-    token = strtok(NULL, ",");
+    token = strsplit(NULL);
     count++;
   }
   // if sort_by still equals -1, then attribute given is not valid
@@ -75,9 +75,9 @@ struct node* tempPtr = categories;
   // reads from stdin until end of file
   while(fgets(line, sizeof line, fpointer) != NULL){
 	catCount = 0;
-    token = strsplit(line);
+    token = strsplit(line); //calls custom string tokenizer function
     head_per_row = (struct node*)malloc(sizeof(struct node));
-	val = malloc((strlen(token) + 1) * sizeof(char));
+	val = malloc((strlen(token) + 1) * sizeof(char)); //copies token into a separate string so it doesnt get overwritten in the future
 	if(val != NULL)
 	{
 		strcpy(val, token);
@@ -90,14 +90,13 @@ struct node* tempPtr = categories;
     head_per_row->value = val;
     prev = head_per_row; 
 	
-	if(catCount == sort_by)
+	if(catCount == sort_by) //checks if this is the value to sort by and puts it into the head struct
 	{
 		headVal = val;
 	}
 	catCount++;
     while(token) {
      // find next token and add to linked list
-	 
      token = strsplit(NULL);
 	 if(token != NULL)
 	 { 
@@ -120,7 +119,7 @@ struct node* tempPtr = categories;
     } 
     row_count++;
 
-	struct head* ptr = malloc(sizeof(struct head));
+	struct head* ptr = malloc(sizeof(struct head));  //creates the head struct to hold the row of data
 	newHead = ptr;
 	newHead->next = NULL;
 	newHead->row = head_per_row;
@@ -137,33 +136,45 @@ struct node* tempPtr = categories;
     } 
  }
  struct head* final = malloc(sizeof(struct head));
+ //sorts the data
  if(final != NULL){
 	final = sort(topRow, row_count, sort_by);
  }
-
+//the file to output
  char filename[] = "sorted.csv";
  
-fp=fopen(filename,"w+");
+fp=fopen(filename,"w+"); 
+//prints the categories to the top of the csv
 while(categories != NULL)
 {
-	fprintf(fp,"%s,",categories -> value);
+	if(categories -> next == NULL)
+	{
+		fprintf(fp,"%s",categories -> value);
+	}
+	else 
+	{
+		fprintf(fp,"%s,",categories -> value);
+	}
 	categories = categories -> next;
 }
  struct head* rows = final;
  struct node* col;
-/*while(rows != NULL)
+ //code to iterate through all linked list nodes and print everything into the csv
+while(rows != NULL)
 {
 	col = rows -> row;
 	while(col != NULL)
 	{
-		fprintf(fp,"%s,",col -> value);
+		if(col -> next == NULL)
+		{
+			fprintf(fp,"%s",col -> value);
+		}
+		else 
+		{
+			fprintf(fp,"%s,",col -> value);
+		}
 		col = col -> next;
 	}
-	rows = rows -> next;
-}*/
-while(rows != NULL)
-{
-	fprintf(fp,"%s\n",rows -> value);
 	rows = rows -> next;
 }
  free(topRow); 
