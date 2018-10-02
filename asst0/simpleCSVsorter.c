@@ -8,10 +8,13 @@
 int main(int argc, char* argv[]){
   // create file pointer
   FILE* fpointer;
+  FILE *fp;
   // file pointer reads from stdin
   fpointer = stdin;
   
+  char* val;
   char line[512]; 
+  struct node* categories = malloc(sizeof(struct node));
   
   // check for correct number of arguments and -c argument
   if (argc != 3){
@@ -28,11 +31,27 @@ int main(int argc, char* argv[]){
   int count = 0;
   // sort_by is the index number that represents which attribute to sort by
   int sort_by = -1;
-
+  val = malloc((strlen(token) + 1) * sizeof(char));
+		if(val != NULL)
+		{
+		strcpy(val, token);
+		}
+  categories -> value = val;
+struct node* temp;
+struct node* tempPtr = categories;
   while(token){
     if (strcmp(token, argv[2]) == 0){
        sort_by = count;
     }
+	temp = malloc(sizeof(struct node));
+	val = malloc((strlen(token) + 1) * sizeof(char));
+		if(val != NULL)
+		{
+		strcpy(val, token);
+		}
+	temp -> value = val;
+	tempPtr -> next = temp;
+	tempPtr = tempPtr -> next;
     token = strtok(NULL, ",");
     count++;
   }
@@ -42,6 +61,7 @@ int main(int argc, char* argv[]){
     return -1;
   }
  
+ 
   int row_count = 0;
   // create top node for row
   struct head* topRow;
@@ -50,16 +70,18 @@ int main(int argc, char* argv[]){
   struct node* head_per_row;
   struct node* prev;
   struct node* newNode;
-  char* val;
+  int catCount; //counter to see if this node is the category to sort by
+  char* headVal; //remembers value to store in head in the future for easier comparisons
   // reads from stdin until end of file
   while(fgets(line, sizeof line, fpointer) != NULL){
-    token = strsplit(line, ",");
+	catCount = 0;
+    token = strsplit(line);
     head_per_row = (struct node*)malloc(sizeof(struct node));
 	val = malloc((strlen(token) + 1) * sizeof(char));
 	if(val != NULL)
 	{
 		strcpy(val, token);
-        }
+    }
 	else
 	{
 		val = NULL;
@@ -67,11 +89,16 @@ int main(int argc, char* argv[]){
     head_per_row->next = NULL;
     head_per_row->value = val;
     prev = head_per_row; 
-   // printf("Row %d: %s, %p\n",row_count, (*head_per_row)->value, (*head_per_row)); 
+	
+	if(catCount == sort_by)
+	{
+		headVal = val;
+	}
+	catCount++;
     while(token) {
      // find next token and add to linked list
 	 
-     token = strsplit(NULL,",");
+     token = strsplit(NULL);
 	 if(token != NULL)
 	 { 
      struct node* nextNode = (struct node*)malloc(sizeof(struct node));
@@ -85,55 +112,61 @@ int main(int argc, char* argv[]){
 		prev->next = nextNode;
 		prev = nextNode;
 	 }
+	 if(catCount == sort_by)
+		{
+		headVal = val;
+		}
+		catCount++;
     } 
     row_count++;
-/*    printf("Row %d: ", row_count);
-    struct node* current = head_per_row;
-    while(current->next != NULL){
-      printf("%s ", current->value);
-      current = current->next;
-    }
-    printf("\n"); */
-    
 
-    //printf("Row %d: %s\n"  , row_count, newHead->row->value);
 	struct head* ptr = malloc(sizeof(struct head));
 	newHead = ptr;
 	newHead->next = NULL;
 	newHead->row = head_per_row;
 	newHead->index = row_count;
+	newHead->value = headVal;
 	
     if(row_count == 1){
      topRow = newHead;
      prevRow = topRow;
     }else{
-		//printf("%s", (prevRow -> row) -> next -> value);
       prevRow->next = newHead;
       prevRow = prevRow->next;
 		
     } 
  }
- 	struct head* haha2 = topRow;
-	struct node* haha = topRow -> row;
-	
-        int cnt = 0;
-	while(haha2 != NULL)
-	{  cnt++; 
-           if(cnt == 275){    
-           printf("Row %d:", cnt);
-		haha = haha2 -> row;
-                while(haha != NULL)
-		{       if(haha->next != NULL){
-			   printf("%s,", haha -> value);
-                        }else{
-                           printf("%s", haha->value);
-                        }
-			haha = haha -> next;
-		}}
-		//printf("%d\n", haha2 -> index);
-                haha2 = haha2->next;
-	}
+ struct head* final = malloc(sizeof(struct head));
+ if(final != NULL){
+	final = sort(topRow, row_count, sort_by);
+ }
 
+ char filename[] = "sorted.csv";
+ 
+fp=fopen(filename,"w+");
+while(categories != NULL)
+{
+	fprintf(fp,"%s,",categories -> value);
+	categories = categories -> next;
+}
+ struct head* rows = final;
+ struct node* col;
+/*while(rows != NULL)
+{
+	col = rows -> row;
+	while(col != NULL)
+	{
+		fprintf(fp,"%s,",col -> value);
+		col = col -> next;
+	}
+	rows = rows -> next;
+}*/
+while(rows != NULL)
+{
+	fprintf(fp,"%s\n",rows -> value);
+	rows = rows -> next;
+}
  free(topRow); 
+ free(categories);
  return 0;
 }

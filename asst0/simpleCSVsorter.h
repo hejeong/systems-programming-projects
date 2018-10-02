@@ -21,10 +21,12 @@ struct node* createNode(){
 }
 
 // tokenizer for string
-char* strsplit(char* str, char const *delim){
+char* strsplit(char* str){
   static char * src = NULL;
-  char * p, * ret = 0;
-
+  char * comma;
+  char * quote1;
+  char * quote2; 
+  char * ret=0; 
   if(str != NULL){
     src = str;
   }
@@ -32,10 +34,16 @@ char* strsplit(char* str, char const *delim){
   if (src == NULL){
     return NULL;
   }  
-  if((p=strpbrk(src, delim)) != NULL){
-    *p = 0;
+ comma = strpbrk(src, ",");
+  if((comma) != NULL){
+     quote1 = strpbrk(src, "\"");
+     if(quote1 != NULL && quote1 < comma){
+       		quote2 = strpbrk(comma, "\"");
+      	 	comma = strpbrk(quote2, ",");
+     }
+    *comma = 0;
     ret = src;
-    src = ++p;
+    src = ++comma;
   } else if (*src){
     ret = src;
     src = NULL;
@@ -47,7 +55,7 @@ char* strsplit(char* str, char const *delim){
 char* strip(char *string){
   
   char* end;
-  end = string + (strlen(string) - 1) * sizeof(char); 
+  end = string + (strlen(string) - 1); 
   //increment until no whitespace
   while(isspace((unsigned char)*string) || *string == '\"'){
      string++;
@@ -58,6 +66,6 @@ char* strip(char *string){
      end = end - sizeof(char);
   }
   //add on null termination character
-  *(end+1) = '\0';
+  *(end+2) = '\0';
   return string;
 }

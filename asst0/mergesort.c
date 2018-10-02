@@ -36,7 +36,6 @@ struct head* merge(struct head* rootL, struct head* rootR, int position)
 			rightIsStr = 1;
 		}				
 	}
-	
 	//creates the head of the new sorted linked list
 	if(rightIsStr == 1 || leftIsStr == 1)
 	{
@@ -77,8 +76,8 @@ struct head* merge(struct head* rootL, struct head* rootR, int position)
 	//iterates through all the nodes in both elements and adds whichever one is lower to the sorted linked list
 	while(left != NULL && right != NULL)
 	{
-		s1 = left -> value;
-		s2 = right -> value;
+		s1 = strip(left -> value);
+		s2 = strip(right -> value);
 		
 		leftIsStr = 0;
 		rightIsStr = 0;
@@ -91,7 +90,7 @@ struct head* merge(struct head* rootL, struct head* rootR, int position)
 		//the same process from before to check if either is a string
 		for(i; i < leftLength; i++)
 		{
-			if(isdigit(s1[i]) == 0 && isdigit(s1[i]) != '.' && isdigit(s1[i]) != 'E' && isdigit(s1[i]) != '+' && isdigit(s1[i]) != '-')
+			if(isdigit(s1[i]) == 0 && s1[i] != '.' && s1[i] != 'E' && s1[i] != '+' && s1[i] != '-' && s1[i] != '\0')
 			{
 				leftIsStr = 1;
 			}				
@@ -101,15 +100,27 @@ struct head* merge(struct head* rootL, struct head* rootR, int position)
 		
 		for(i; i < rightLength; i++)
 		{
-			if(isdigit(s1[i]) == 0 && isdigit(s2[i]) != '.' && isdigit(s2[i]) != 'E' && isdigit(s2[i]) != '+' && isdigit(s2[i]) != '-')
+			if(isdigit(s1[i]) == 0 && s2[i] != '.' && s2[i] != 'E' && s2[i] != '+' && s2[i] != '-' && s2[i] != '\0')
 			{
 				rightIsStr = 1;
 			}				
 		}
 		//the same process from before when creating the head of the new linked list
-		if(rightIsStr == 1 || leftIsStr == 1)
+		if (strcmp(strip(left -> value), strip(right -> value)) < 0)
+			{
+				ptr -> next = left;
+				ptr = ptr -> next;
+				left = left -> next;
+			}
+			else
+			{
+				ptr -> next = right;
+				ptr = ptr -> next;
+				right = right -> next;
+			}
+		/*if(rightIsStr == 1 || leftIsStr == 1)
 		{
-			if (strcmp(left -> value, right -> value) < 0)
+			if (strcmp(strip(left -> value), strip(right -> value)) < 0)
 			{
 				ptr -> next = left;
 				ptr = ptr -> next;
@@ -126,8 +137,8 @@ struct head* merge(struct head* rootL, struct head* rootR, int position)
 		{
 			double leftVal;
 			double rightVal;
-			sscanf(left -> value, "%lf", &leftVal);
-			sscanf(right -> value, "%lf", &rightVal);
+			sscanf(strip(left -> value), "%lf", &leftVal);
+			sscanf(strip(right -> value), "%lf", &rightVal);
 			if (leftVal < rightVal)
 			{
 				ptr -> next = left;
@@ -140,7 +151,7 @@ struct head* merge(struct head* rootL, struct head* rootR, int position)
 				ptr = ptr -> next;
 				right = right -> next;
 			}
-		}
+		}*/
 
 	}
 	
@@ -164,19 +175,17 @@ struct head* sort(struct head* root, int size, int position)
 	{
 		return root;
 	}
-	
 	int i = 0;
 	struct head* ptr = root;
 	struct head* mid = root -> next;
 	int middle = size / 2;
 	//splits the linked list into two separate lists down the middle
-	for(i; i < middle; i++)
+	for(i; i < middle - 1; i++)
 	{
 		ptr = mid;
 		mid = mid -> next;
 	}
 	ptr -> next = NULL;
-	
 	struct head* sorted = merge(sort(root, middle, position), sort(mid, size - middle, position), position);
 	return(sorted);
 }
