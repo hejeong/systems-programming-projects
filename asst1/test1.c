@@ -7,17 +7,14 @@
 
 const char *getExt(char *filename) {
     const char *dot = strrchr(filename, '.');
-	printf("found\n");
 	if(!dot || dot == filename)
 	{
 		return "";
 	}
     if(dot != NULL)
 	{
-		printf("good\n");
 		return dot + 1;
 	}
-	printf("bad");
 	return NULL;
 }
 
@@ -61,14 +58,13 @@ void traverse(char name[100]){
 							return;
 						}
 						printf("%s\n", path);
-						printf("%d\n",states.st_mode);
 						if(strcmp(getExt(ent->d_name),"csv") == 0)
 						{
-							printf("is file\n");
+							printf("is csv file\n");
 						}
 						else if(S_ISDIR(states.st_mode))
 						{
-							printf("worked");
+							printf("is dir\n");
                             traverse(path);
                         }
                 }
