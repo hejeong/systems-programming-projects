@@ -5,6 +5,22 @@
 #include <dirent.h>
 #include <sys/stat.h>
 
+const char *getExt(char *filename) {
+    const char *dot = strrchr(filename, '.');
+	printf("found\n");
+	if(!dot || dot == filename)
+	{
+		return "";
+	}
+    if(dot != NULL)
+	{
+		printf("good\n");
+		return dot + 1;
+	}
+	printf("bad");
+	return NULL;
+}
+
 void traverse(char name[100]){
 		char path[100];
         DIR* dir;
@@ -28,24 +44,32 @@ void traverse(char name[100]){
 		//reads the dirent of the current file or directory
         while((ent=readdir(dir)) != NULL)
 		{
-				//grabs the name through the dirent and places in states
-                stat(ent->d_name,&states);
-				
+				stat(ent->d_name,&states);
 				//checks if its backing out, NOT SURE IF THIS IS NECESSARY, JUST COPIED FROM STACK OVERFLOW
                 if(!strcmp(".", ent->d_name) || !strcmp("..", ent->d_name))
 				{
-						printf("you loser");
+						//printf("you loser");
                         continue;
                 }
                 else{
-						//prints the current directory plus whatever the stream is on
-                        printf("%s/%s\n",name,ent->d_name);
+						strcpy(path,name);
 						//if the stream is on a directory, concatenates the names into a single path and calls traverse again
-                        if(S_ISDIR(states.st_mode))
+						strcat(path,"/");
+                        strcat(path,ent->d_name);
+						if((stat(path,&states)) != 0)
 						{
-                                strcat(path,"/");
-                                strcat(path,ent->d_name);
-                                traverse(path);
+							return;
+						}
+						printf("%s\n", path);
+						printf("%d\n",states.st_mode);
+						if(strcmp(getExt(ent->d_name),"csv") == 0)
+						{
+							printf("is file\n");
+						}
+						else if(S_ISDIR(states.st_mode))
+						{
+							printf("worked");
+                            traverse(path);
                         }
                 }
         }
