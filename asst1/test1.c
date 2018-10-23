@@ -1,6 +1,57 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <dirent.h>
+#include <sys/stat.h>
+
+void traverse(char name[100]){
+		char path[100];
+        DIR* dir;
+        struct dirent *ent;
+        struct stat states;
+		
+		if(path == NULL)
+		{
+			return;
+		}
+		
+		//copies a local copy of the name so the name resets with a new directory
+		strcpy(path, name);
+        dir = opendir(path);
+		
+		//checks if its the end of the dir stream
+		if(dir == NULL)
+		{
+			return;
+		}
+		//reads the dirent of the current file or directory
+        while((ent=readdir(dir)) != NULL)
+		{
+				//grabs the name through the dirent and places in states
+                stat(ent->d_name,&states);
+				
+				//checks if its backing out, NOT SURE IF THIS IS NECESSARY, JUST COPIED FROM STACK OVERFLOW
+                if(!strcmp(".", ent->d_name) || !strcmp("..", ent->d_name))
+				{
+						printf("you loser");
+                        continue;
+                }
+                else{
+						//prints the current directory plus whatever the stream is on
+                        printf("%s/%s\n",name,ent->d_name);
+						//if the stream is on a directory, concatenates the names into a single path and calls traverse again
+                        if(S_ISDIR(states.st_mode))
+						{
+                                strcat(path,"/");
+                                strcat(path,ent->d_name);
+                                traverse(path);
+                        }
+                }
+        }
+
+        closedir(dir);
+}
 
 int main(int argc, char* argv[]){
   
@@ -47,54 +98,12 @@ int main(int argc, char* argv[]){
   printf("column = %s ; inputDir = %s ; outputDir = %s \n", column, inputDir, outputDir); 
   
   //check if there is a path, if there is then call
-  traverse(dflag);
+  traverse(inputDir);
   
   free(inputDir);
   free(outputDir);
   free(column);
   return 0;
 }
-void traverse(char name[100]){
-		char path[100];
-        DIR* dir;
-        struct dirent *ent;
-        struct stat states;
-		
-		if(path == NULL)
-		{
-			return;
-		}
-		
-		//copies a local copy of the name so the name resets with a new directory
-		strcpy(path, name);
-        dir = opendir(name);
-		
-		//checks if its the end of the dir stream
-		if(dir == NULL)
-		{
-			return;
-		}
-		//reads the dirent of the current file or directory
-        while((ent=readdir(dir)) != NULL){
-				//grabs the name through the dirent and places in states
-                stat(ent->d_name,&states);
-				
-				//checks if its backing out, NOT SURE IF THIS IS NECESSARY, JUST COPIED FROM STACK OVERFLOW
-                if(!strcmp(".", ent->d_name) || !strcmp("..", ent->d_name)){
-                        continue;
-                }
-                else{
-						//prints the current directory plus whatever the stream is on
-                        printf("%s/%s\n",name,ent->d_name);
-						//if the stream is on a directory, concatenates the names into a single path and calls traverse again
-                        if(S_ISDIR(ent->d_type & DT_DIR)){
-                                strcat(path,"/");
-                                strcat(path,ent->d_name);
-                                traverse(path);
-                        }
-                }
-        }
 
-        closedir(dir);
-}
 
