@@ -6,7 +6,7 @@
 #include <sys/stat.h>
 #include "simpleCSVsorter.h"
 #include "mergesort.c"
-int sortCSV(char* inputFile, char* columnName){
+int sortCSV(char* inputFile, char* columnName, char* outputDir){
 	// create file pointer
 	  FILE* fpointer;
 	  FILE *fp;
@@ -133,17 +133,19 @@ int sortCSV(char* inputFile, char* columnName){
 	 if(final != NULL){
 		final = sort(topRow, row_count, sort_by);
 	 }
+//	printf("Hello \n");
 	//the file to output
 	 char* dot = strrchr(inputFile, '.');
 	 *dot = '\0';
 	 strcat(inputFile, "-sorted-");
 	 strcat(inputFile, columnName);
 	 strcat(inputFile, ".csv");
-	 //char* fileOnly = strrchr(inputFile, '/');
-	 //char* filename = malloc(sizeof(char)*(strlen(fileOnly)+strlen(outputDir)+1));
-	 //strcpy(filename, outputDir);
-	 char* filename = malloc(sizeof(char)*(strlen(inputFile)));
-	 strcpy(filename, inputFile);
+	 char* fileOnly = strrchr(inputFile, '/');
+	 char* filename = malloc(sizeof(char)*(strlen(fileOnly)+strlen(outputDir)));
+	 strcat(filename, outputDir);
+	 strcat(filename, fileOnly);
+	 //char* filename = malloc(sizeof(char)*(strlen(inputFile)));
+	 //strcpy(filename, inputFile);
 
 	fp=fopen(filename,"w+"); 
 	//prints the categories to the top of the csv
@@ -180,6 +182,7 @@ int sortCSV(char* inputFile, char* columnName){
 	}
 	 fclose(fpointer);
 	 fclose(fp);
+	 free(filename);
 	 free(topRow); 
 	 free(categories);
 	 return 0;
@@ -197,7 +200,7 @@ const char *getExt(char *filename) {
 	return NULL;
 }
 
-void traverse(char name[100], char* column){
+void traverse(char name[100], char* column, char* outputDir){
 		char path[100];
         DIR* dir;
         struct dirent *ent;
@@ -236,7 +239,7 @@ void traverse(char name[100], char* column){
 			{
 				return;
 			}
-			printf("%s\n", path);
+			//printf("%s\n", path);
 			if(strcmp(getExt(ent->d_name),"csv") == 0)
 			{
 				int pid = fork();
@@ -244,18 +247,18 @@ void traverse(char name[100], char* column){
 					char relPath[100];
 					strcat(relPath, "./");
 					strcat(relPath, path);
-					sortCSV(relPath,column);
+					sortCSV(relPath,column, outputDir);
 					exit(0);
 				}else if(pid > 0){
 					wait();
 				}
-				printf("%s is csv file\n", ent->d_name);
+	//			printf("%s is csv file\n", ent->d_name);
 			}
 			else if(S_ISDIR(states.st_mode))
 			{
 				int pid = fork();
 				if(pid == 0){
-					traverse(path,column);
+					traverse(path,column, outputDir);
 					exit(0);
 				}else if(pid > 0){
 					wait();
@@ -311,16 +314,18 @@ int main(int argc, char* argv[]){
   }
   //printf("cflag = %d ; dflag = %d ; oflag = %d\n", cflag, dflag, oflag);
   //printf("column = %s ; inputDir = %s ; outputDir = %s \n", column, inputDir, outputDir); 
-  /*struct stat st = {0};
-  char* relPathOut;
-  strcat(relPathOut, "./");
+  struct stat st = {0};
+  char* relPathOut = malloc((strlen(outputDir)+2)*sizeof(char));
+  strcpy(relPathOut, "./");
   strcat(relPathOut, outputDir);
+//UNCOMMENT THIS<---  printf("%s \n", relPathOut);
   if(stat(relPathOut, &st) == -1){
     mkdir(relPathOut, 0700);
-  }*/
+  }
   //check if there is a path, if there is then call
-  traverse(inputDir, column);
+  traverse(inputDir, column, relPathOut);
   
+  free(relPathOut);
   free(inputDir);
   free(outputDir);
   free(column);
