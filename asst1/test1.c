@@ -2,6 +2,8 @@
 what if directory ends in .csv?
 what if csv is not properly formatted?
 have to malloc path names
+works with malloc path names but bugs out when freed
+have to move everything to header
 */
 #include <sys/mman.h>
 #include <stdio.h>
@@ -208,20 +210,14 @@ const char *getExt(char *filename) {
 	return NULL;
 }
 
-void traverse(char name[100], char* column, char* outputDir){
-		char path[100];
+void traverse(char* name, char* column, char* outputDir){
+		char* path;
         DIR* dir;
         struct dirent *ent;
         struct stat states;
 		
-	if(path == NULL)
-	{
-		return;
-	}
-		
 	//copies a local copy of the name so the name resets with a new directory
-	strcpy(path, name);
-        dir = opendir(path);
+        dir = opendir(name);
 		
 	//checks if its the end of the dir stream
 	if(dir == NULL)
@@ -237,10 +233,15 @@ void traverse(char name[100], char* column, char* outputDir){
                 continue;
             }
             else{
+			path = malloc((strlen(name)+1+1+1+strlen(ent->d_name))*sizeof(char));
+			if(path == NULL)
+			{
+			return;
+			}
 			strcpy(path,name);
 			//concatenates the names into a single path and calls traverse again
 			strcat(path,"/");
-                        strcat(path,ent->d_name);
+            strcat(path,ent->d_name);
 			if((stat(path,&states)) != 0)
 			{
 				return;
@@ -274,15 +275,12 @@ void traverse(char name[100], char* column, char* outputDir){
 					traverse(path,column, outputDir);
 					exit(0);
 				}else if(pid > 0){
-					fflush(stdout);
 					wait();
-					fflush(stdout);
 				}
 				//printf("is dir\n");
             }
             }
         }
-
         closedir(dir);
 }
 
