@@ -1,3 +1,9 @@
+/*problems
+what if directory ends in .csv?
+what if csv is not properly formatted?
+have to malloc path names
+*/
+#include <sys/mman.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -6,6 +12,9 @@
 #include <sys/stat.h>
 #include "simpleCSVsorter.h"
 #include "mergesort.c"
+
+int* shared;
+
 int sortCSV(char* inputFile, char* columnName, char* outputDir){
 	// create file pointer
 	  FILE* fpointer;
@@ -50,7 +59,6 @@ int sortCSV(char* inputFile, char* columnName, char* outputDir){
 	  }
 	  // if sort_by still equals -1, then attribute given is not valid
 	  if (sort_by == -1){
-		printf("Not a valid attribute.\n");
 		return -1;
 	  }
 	 
@@ -223,33 +231,35 @@ void traverse(char name[100], char* column, char* outputDir){
 	//reads the dirent of the current file or directory
         while((ent=readdir(dir)) != NULL)
 	{
-		stat(ent->d_name,&states);
-		//checks if its backing out, NOT SURE IF THIS IS NECESSARY, JUST COPIED FROM STACK OVERFLOW
-                if(!strcmp(".", ent->d_name) || !strcmp("..", ent->d_name))
-		{
-			//printf("you loser");
-                        continue;
-                }
-                else{
+		//checks if its a . or .. directory
+            if(!strcmp(".", ent->d_name) || !strcmp("..", ent->d_name))
+			{
+                continue;
+            }
+            else{
 			strcpy(path,name);
-			//if the stream is on a directory, concatenates the names into a single path and calls traverse again
+			//concatenates the names into a single path and calls traverse again
 			strcat(path,"/");
                         strcat(path,ent->d_name);
 			if((stat(path,&states)) != 0)
 			{
 				return;
 			}
-			//printf("%s\n", path);
+			//checks if its a csv
 			if(strcmp(getExt(ent->d_name),"csv") == 0)
 			{
 				int pid = fork();
 				if(pid == 0){
+					printf(" %d,", getpid());
+					fflush(stdout);
+					*shared = *shared + 1;
 					char relPath[100];
 					strcat(relPath, "./");
 					strcat(relPath, path);
 					sortCSV(relPath,column, outputDir);
 					exit(0);
 				}else if(pid > 0){
+					
 					wait();
 				}
 	//			printf("%s is csv file\n", ent->d_name);
@@ -258,14 +268,19 @@ void traverse(char name[100], char* column, char* outputDir){
 			{
 				int pid = fork();
 				if(pid == 0){
+					printf(" %d,", getpid());
+					fflush(stdout);
+					*shared = *shared + 1;
 					traverse(path,column, outputDir);
 					exit(0);
 				}else if(pid > 0){
+					fflush(stdout);
 					wait();
+					fflush(stdout);
 				}
 				//printf("is dir\n");
-                        }
-                }
+            }
+            }
         }
 
         closedir(dir);
@@ -280,6 +295,8 @@ int main(int argc, char* argv[]){
   char* column = "";
   char* inputDir = "";
   char* outputDir = ""; 
+  shared = mmap(NULL, sizeof(int), PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
+  *shared = *shared + 1;
   if(argc != 7){
     //error: incorrect number of arguments
   }
@@ -312,6 +329,7 @@ int main(int argc, char* argv[]){
       continue;
     }
   }
+  
   //printf("cflag = %d ; dflag = %d ; oflag = %d\n", cflag, dflag, oflag);
   //printf("column = %s ; inputDir = %s ; outputDir = %s \n", column, inputDir, outputDir); 
   struct stat st = {0};
@@ -323,8 +341,11 @@ int main(int argc, char* argv[]){
     mkdir(relPathOut, 0700);
   }
   //check if there is a path, if there is then call
+  printf("Initial PID: %d\n", getpid());
+  printf("PIDs of all children processes: ");
+  fflush(stdout);
   traverse(inputDir, column, relPathOut);
-  
+  printf("\nTotal number of processes: %d\n", *shared);
   free(relPathOut);
   free(inputDir);
   free(outputDir);
