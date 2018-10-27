@@ -1,9 +1,10 @@
 /*problems
-what if directory ends in .csv?
-what if csv is not properly formatted?
-have to malloc path names
-works with malloc path names but bugs out when freed
-have to move everything to header
+what if directory ends in .csv? - very difficult have no idea how to proceed because segfaults if check if its a file when its a directory
+what if csv is not properly formatted? - easy, check if row sizes are all the same
+have to malloc path names - done
+works with malloc path names but bugs out when freed - maybe not important but should still find some time to check
+have to move everything to header - strange problems when moving without changing code, says sort method does not return a struct head instead returns int, maybe super?
+print pid - done
 */
 #include <sys/mman.h>
 #include <stdio.h>
