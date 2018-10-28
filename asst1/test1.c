@@ -6,7 +6,10 @@ works with malloc path names but bugs out when freed - maybe not important but s
 have to move everything to header - strange problems when moving without changing code, says sort method does not return a struct head instead returns int, maybe super?
 print pid - done
 have to free everything in sortCSV with loop - done, but cant actually free columns, not sure why
-what if a name starts with /
+what if a name starts with / - done
+check if input directory exists, if it doesnt, use current directory - done
+check if output directory exists, if it doesnt, use current directory - done
+what if output directory has two //
 */
 #include <sys/mman.h>
 #include <stdio.h>
@@ -350,20 +353,30 @@ int main(int argc, char* argv[]){
   //printf("cflag = %d ; dflag = %d ; oflag = %d\n", cflag, dflag, oflag);
   //printf("column = %s ; inputDir = %s ; outputDir = %s \n", column, inputDir, outputDir); 
   struct stat st = {0};
-  char* relPathOut = malloc((strlen(outputDir)+2)*sizeof(char));
-  strcpy(relPathOut, "./");
-  strcat(relPathOut, outputDir);
 //UNCOMMENT THIS<---  printf("%s \n", relPathOut);
-  if(stat(relPathOut, &st) == -1){
-    mkdir(relPathOut, 0700);
-  }
   //check if there is a path, if there is then call
   printf("Initial PID: %d\n", getpid());
   printf("PIDs of all children processes: ");
   fflush(stdout);
-  traverse(inputDir, column, relPathOut);
+  if(stat(inputDir, &st) == -1){
+	  if(stat(outputDir, &st) == -1){
+		traverse("./\0", column, "./\0");
+		}
+  else{
+    traverse("./\0", column, outputDir);
+  }
+  }
+  else
+  {
+	  if(stat(outputDir, &st) == -1){
+		traverse(inputDir, column, "./\0");
+	}
+  else
+  {
+	  traverse(inputDir, column, outputDir);
+  }
+  }
   printf("\nTotal number of processes: %d\n", *shared);
-  free(relPathOut);
   free(inputDir);
   free(outputDir);
   free(column);
