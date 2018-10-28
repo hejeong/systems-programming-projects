@@ -1,24 +1,23 @@
-struct head
-{
-	struct node* row;
-	struct head* next;
-	int index;
-	char* value; //value for easier comparison and sorting in merge sort
-};
-
-struct node 
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+typedef struct nodeCol
 {
 	int pos;
-	struct node* next;
+	struct nodeCol* next;
 	char* value;
-};
+}node;
 
-struct node* createNode(){
- struct node* newNode = (struct node*)malloc(sizeof(struct node));
+typedef struct headRow
+{
+	struct nodeCol* row;
+	struct headRow* next;
+	int index;
+	char* value; //value for easier comparison and sorting in merge sort
+}head;
 
- newNode->next = NULL;
- return newNode;
-}
 
 // tokenizer for string
 char* strsplit(char* str){

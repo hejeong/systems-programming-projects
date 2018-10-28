@@ -1,13 +1,16 @@
+#include "simpleCSVsorter.h"
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
 //the merging part of merge sort
-struct head* merge(struct head* rootL, struct head* rootR, int position)
+ head* merge( head* rootL,  head* rootR, int position)
 {
-	struct head* left = rootL;
-	struct head* right = rootR;
-	struct head* root;
-	
-	struct node* ptrLeft = rootL -> row;
-	struct node* ptrRight = rootR -> row;
-
+	 head* left = rootL;
+	 head* right = rootR;
+	 head* root;
+	 
 	char* s1 = strip(left -> value);  //the elements with no leading or trailing whitespaces or quotes, ready for comparison
 	char* s2 = strip(right -> value);
 	
@@ -19,7 +22,7 @@ struct head* merge(struct head* rootL, struct head* rootR, int position)
 	
 	//checks if the two elements should be checked in numerical or lexicographical order
 	//goes through each element of the string to see if it is a digit
-	for(i; i < leftLength; i++)
+	for(i = 0; i < leftLength; i++)
 	{
 		if(isdigit(s1[i]) == 0 && s1[i] != '\0')
 		{
@@ -27,9 +30,7 @@ struct head* merge(struct head* rootL, struct head* rootR, int position)
 		}				
 	}
 		
-	i = 0;
-		
-	for(i; i < rightLength; i++)
+	for(i = 0; i < rightLength; i++)
 	{
 		if(isdigit(s2[i]) == 0 && s2[i] != '\0')
 		{
@@ -71,7 +72,7 @@ struct head* merge(struct head* rootL, struct head* rootR, int position)
 		}
 	}
 
-	struct head* ptr = root;
+	 head* ptr = root;
 	
 	//iterates through all the nodes in both elements and adds whichever one is lower to the sorted linked list
 	while(left != NULL || right != NULL)
@@ -97,13 +98,11 @@ struct head* merge(struct head* rootL, struct head* rootR, int position)
 			leftIsStr = 0; 
 			rightIsStr = 0;
 		
-			int i = 0;
-		
 			leftLength = strlen(s1);
 			rightLength = strlen(s2);
 		
 			//the same process from before to check if either is a string
-			for(i; i < leftLength; i++)
+			for(i = 0; i < leftLength; i++)
 			{
 				if(isdigit(s1[i]) == 0 && s1[i] != '\0')
 				{
@@ -111,9 +110,7 @@ struct head* merge(struct head* rootL, struct head* rootR, int position)
 				}				
 			}
 		
-			i = 0;
-				
-			for(i; i < rightLength; i++)
+			for(i = 0; i < rightLength; i++)
 			{
 				if(isdigit(s2[i]) == 0 && s2[i] != '\0')
 				{
@@ -163,25 +160,25 @@ struct head* merge(struct head* rootL, struct head* rootR, int position)
 }
 
 //the part that separates all elements of merge sort
-struct head* sort(struct head* root, int size, int position)
+ head* sort( head* root, int size, int position)
 {
 	if (root -> next == NULL)
 	{
 		return root;
 	}
-	int i = 0;
+	int i;
 	//splits the list into two elements down the middle
-	struct head* ptr = root;
-	struct head* mid = root -> next;
+	 head* ptr = root;
+	 head* mid = root -> next;
 	int middle = size / 2;
 	//splits the linked list into two separate lists down the middle
-	for(i; i < middle - 1; i++)
+	for(i = 0; i < middle - 1; i++)
 	{
 		ptr = mid;
 		mid = mid -> next;
 	}
 	ptr -> next = NULL;
 	//recursive call included in the merge call
-	struct head* sorted = merge(sort(root, middle, position), sort(mid, size - middle, position), position);
+	 head* sorted = merge(sort(root, middle, position), sort(mid, size - middle, position), position);
 	return(sorted);
 }
