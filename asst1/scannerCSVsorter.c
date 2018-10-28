@@ -1,9 +1,8 @@
 /*problems
-*****************what if directory ends in .csv? - very difficult have no idea how to proceed because segfaults if check if its a file when its a directory
+*****************what if directory ends in .csv? - very difficult have no idea how to proceed because segfaults if check if its a file when its a directory - done
 what if csv is not properly formatted? - done
 have to malloc path names - done
 ****works with malloc path names but bugs out when freed - maybe not important but should still find some time to check
-***********have to move everything to header - strange problems when moving without changing code, says sort method does not return a  head instead returns int, maybe super?
 print pid - done
 have to free everything in sortCSV with loop - done, but cant actually free columns, not sure why
 what if a name starts with / - done
@@ -323,7 +322,7 @@ void traverse(char* name, char* column, char* outputDir){
 				return;
 			}
 			//checks if its a csv
-			if(strcmp(getExt(ent->d_name),"csv") == 0)
+			if(strcmp(getExt(ent->d_name),"csv") == 0 && states.st_mode & S_IFREG)
 			{
 				int pid = fork();
 				if(pid == 0){
