@@ -10,7 +10,7 @@ what if a name starts with / - done
 check if input directory exists, if it doesnt, use current directory - done
 check if output directory exists, if it doesnt, use current directory - done
 ****what if output directory has two //
-makefile shit 
+makefile shit - done
 */
 #include <sys/mman.h>
 #include <stdio.h>
@@ -213,7 +213,6 @@ int sortCSV(char* inputFile, char* columnName, char* outputDir){
 	 if(final != NULL){
 		final = sort(topRow, row_count, sort_by);
 	 }
-//	printf("Hello \n");
 	//the file to output
 	 char* dot = strrchr(inputFile, '.');
 	 *dot = '\0';
@@ -224,8 +223,6 @@ int sortCSV(char* inputFile, char* columnName, char* outputDir){
 	 char* filename = malloc(sizeof(char)*(strlen(fileOnly)+strlen(outputDir)));
 	 strcat(filename, outputDir);
 	 strcat(filename, fileOnly);
-	 //char* filename = malloc(sizeof(char)*(strlen(inputFile)));
-	 //strcpy(filename, inputFile);
 
 	fp=fopen(filename,"w+"); 
 	//prints the categories to the top of the csv
@@ -407,10 +404,7 @@ int main(int argc, char* argv[]){
     }
   }
   
-  //printf("cflag = %d ; dflag = %d ; oflag = %d\n", cflag, dflag, oflag);
-  //printf("column = %s ; inputDir = %s ; outputDir = %s \n", column, inputDir, outputDir); 
    struct stat st = {0};
-//UNCOMMENT THIS<---  printf("%s \n", relPathOut);
   //check if there is a path, if there is then call
   printf("Initial PID: %d\n", getpid());
   printf("PIDs of all children processes: ");
@@ -419,25 +413,25 @@ int main(int argc, char* argv[]){
 	  if(stat(outputDir, &st) == -1){
 		traverse("./\0", column, "./\0");
 		}
-  else{
+	else{
     traverse("./\0", column, outputDir);
-  }
-  }
-  else
-  {
+	}
+	}
+	else
+	{
 	  if(stat(outputDir, &st) == -1){
 		traverse(inputDir, column, "./\0");
 	}
-  else
-  {
+	else
+	{
 	  traverse(inputDir, column, outputDir);
-  }
-  }
-  printf("\nTotal number of processes: %d\n", *shared);
-  free(inputDir);
-  free(outputDir);
-  free(column);
-  return 0;
+	}
+	}
+	printf("\nTotal number of processes: %d\n", *shared);
+	free(inputDir);
+	free(outputDir);
+	free(column);
+	return 0;
 }
 
 

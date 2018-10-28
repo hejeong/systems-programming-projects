@@ -160,7 +160,7 @@
 }
 
 //the part that separates all elements of merge sort
- head* sort( head* root, int size, int position)
+ head* sort(head* root, int size, int position)
 {
 	if (root -> next == NULL)
 	{
