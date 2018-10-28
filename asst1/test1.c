@@ -1,10 +1,12 @@
 /*problems
 what if directory ends in .csv? - very difficult have no idea how to proceed because segfaults if check if its a file when its a directory
-what if csv is not properly formatted? - easy, check if row sizes are all the same
+what if csv is not properly formatted? - done
 have to malloc path names - done
 works with malloc path names but bugs out when freed - maybe not important but should still find some time to check
 have to move everything to header - strange problems when moving without changing code, says sort method does not return a struct head instead returns int, maybe super?
 print pid - done
+have to free everything in sortCSV with loop - done, but cant actually free columns, not sure why
+what if a name starts with /
 */
 #include <sys/mman.h>
 #include <stdio.h>
@@ -60,6 +62,7 @@ int sortCSV(char* inputFile, char* columnName, char* outputDir){
 		token = strsplit(NULL);
 		count++;
 	  }
+	  
 	  // if sort_by still equals -1, then attribute given is not valid
 	  if (sort_by == -1){
 		return -1;
@@ -121,6 +124,12 @@ int sortCSV(char* inputFile, char* columnName, char* outputDir){
 			}
 			catCount++;
 		} 
+		//checks if row has correct number of categories
+		if(catCount != count + 1)
+		{
+			return -1;
+		}
+		
 		row_count++;
 
 		struct head* ptr = malloc(sizeof(struct head));  //creates the head struct to hold the row of data
@@ -173,6 +182,8 @@ int sortCSV(char* inputFile, char* columnName, char* outputDir){
 	}
 	 struct head* rows = final;
 	 struct node* col;
+	 struct head* freeRow;
+	 struct node* freeCol;
 	 //code to iterate through all linked list nodes and print everything into the csv
 	while(rows != NULL)
 	{
@@ -189,13 +200,20 @@ int sortCSV(char* inputFile, char* columnName, char* outputDir){
 			}
 			col = col -> next;
 		}
+		freeRow = rows;
 		rows = rows -> next;
+		free(freeRow);
 	}
 	 fclose(fpointer);
 	 fclose(fp);
 	 free(filename);
-	 free(topRow); 
-	 free(categories);
+	 while(categories != NULL)
+	 {
+		 freeCol = categories;
+		 categories = categories -> next;
+		 free(freeCol);
+	 }
+	 free(val);
 	 return 0;
 }
 const char *getExt(char *filename) {
