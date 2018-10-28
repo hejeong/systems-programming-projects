@@ -83,64 +83,64 @@ char* strip(char *string){
 
 int sortCSV(char* inputFile, char* columnName, char* outputDir){
 	// create file pointer
-	  FILE* fpointer;
-	  FILE *fp;
-	  // file pointer reads from stdin
-	  fpointer = fopen(inputFile, "r");
+	FILE* fpointer;
+	FILE *fp;
+	// file pointer reads from stdin
+	fpointer = fopen(inputFile, "r");
 	  
-	  char* val;
-	  char line[512]; 
-	   node* categories = malloc(sizeof( node));
+	char* val;
+	char line[512]; 
+	node* categories = malloc(sizeof( node));
 	 
-	  fgets(line, sizeof line, fpointer);
+	fgets(line, sizeof line, fpointer);
 	  
-	  char *token = strsplit(line);
-	  // count number of columns starting at 0
-	  int count = 0;
-	  // sort_by is the index number that represents which attribute to sort by
-	  int sort_by = -1;
-	  val = malloc((strlen(token) + 1) * sizeof(char));
-			if(val != NULL)
-			{
+	char *token = strsplit(line);
+	// count number of columns starting at 0
+	int count = 0;
+	// sort_by is the index number that represents which attribute to sort by
+	int sort_by = -1;
+	val = malloc((strlen(token) + 1) * sizeof(char));
+		if(val != NULL)
+		{
 			strcpy(val, token);
-			}
-	  categories -> value = val;
-	 node* temp;
-	 node* tempPtr = categories;
-	  while(token){
+		}
+	categories -> value = val;
+	node* temp;
+	node* tempPtr = categories;
+	while(token){
 		if (strcmp(token, columnName) == 0){
-		   sort_by = count;
+			sort_by = count;
 		}
 		temp = malloc(sizeof( node));
 		val = malloc((strlen(token) + 1) * sizeof(char));
 			if(val != NULL)
 			{
-			strcpy(val, token);
+				strcpy(val, token);
 			}
 		temp -> value = val;
 		tempPtr -> next = temp;
 		tempPtr = tempPtr -> next;
 		token = strsplit(NULL);
 		count++;
-	  }
+	}
 	  
 	  // if sort_by still equals -1, then attribute given is not valid
-	  if (sort_by == -1){
+	if (sort_by == -1){
 		return -1;
-	  }
+	}
 	 
 	 
-	  int row_count = 0;
-	  // create top node for row
-	   head* topRow;
-	   head* prevRow;
-	   head* newHead;
-	   node* head_per_row;
-	   node* prev;
-	  int catCount; //counter to see if this node is the category to sort by
-	  char* headVal; //remembers value to store in head in the future for easier comparisons
-	  // reads from stdin until end of file
-	  while(fgets(line, sizeof line, fpointer) != NULL){
+	int row_count = 0;
+	// create top node for row
+	head* topRow;
+	head* prevRow;
+	head* newHead;
+	node* head_per_row;
+	node* prev;
+	int catCount; //counter to see if this node is the category to sort by
+	char* headVal; //remembers value to store in head in the future for easier comparisons
+	// reads from stdin until end of file
+	while(fgets(line, sizeof line, fpointer) != NULL){
 		catCount = 0;
 		token = strsplit(line); //calls custom string tokenizer function
 		head_per_row = ( node*)malloc(sizeof( node));
@@ -210,19 +210,19 @@ int sortCSV(char* inputFile, char* columnName, char* outputDir){
 	 }
 	  head* final = malloc(sizeof(head));
 	 //sorts the data
-	 if(final != NULL){
+	if(final != NULL){
 		final = sort(topRow, row_count, sort_by);
-	 }
+	}
 	//the file to output
-	 char* dot = strrchr(inputFile, '.');
-	 *dot = '\0';
-	 strcat(inputFile, "-sorted-");
-	 strcat(inputFile, columnName);
-	 strcat(inputFile, ".csv");
-	 char* fileOnly = strrchr(inputFile, '/');
-	 char* filename = malloc(sizeof(char)*(strlen(fileOnly)+strlen(outputDir)));
-	 strcat(filename, outputDir);
-	 strcat(filename, fileOnly);
+	char* dot = strrchr(inputFile, '.');
+	*dot = '\0';
+	strcat(inputFile, "-sorted-");
+	strcat(inputFile, columnName);
+	strcat(inputFile, ".csv");
+	char* fileOnly = strrchr(inputFile, '/');
+	char* filename = malloc(sizeof(char)*(strlen(fileOnly)+strlen(outputDir)+1));
+	strcat(filename, outputDir);
+	strcat(filename, fileOnly);
 
 	fp=fopen(filename,"w+"); 
 	//prints the categories to the top of the csv
@@ -237,10 +237,10 @@ int sortCSV(char* inputFile, char* columnName, char* outputDir){
 		}
 		categories = categories -> next;
 	}
-	  head* rows = final;
-	  node* col;
-	  head* freeRow;
-	  node* freeCol;
+		head* rows = final;
+		node* col;
+		head* freeRow;
+		node* freeCol;
 	 //code to iterate through all linked list nodes and print everything into the csv
 	while(rows != NULL)
 	{
@@ -362,70 +362,74 @@ void traverse(char* name, char* column, char* outputDir){
 
 int main(int argc, char* argv[]){
   
-  int i;
-  int cflag = 0;
-  int dflag = 0;
-  int oflag = 0;
-  char* column = "";
-  char* inputDir = "";
-  char* outputDir = ""; 
-  shared = mmap(NULL, sizeof(int), PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
-  *shared = *shared + 1;
-  if(argc != 7){
-    //error: incorrect number of arguments
-  }
-  for(i = 0; i < argc; i++){
-    if(cflag == 0 && strcmp(argv[i], "-c") == 0){
-      cflag = 1;
-      continue;
-    }
-    if(cflag == 1 && strlen(column) == 0){
-      column = malloc((strlen(argv[i])+1)*sizeof(char));
-      strcpy(column, argv[i]);
-      continue;
-    }
-    if(strcmp(argv[i],"-d") == 0){
-      dflag = 1;
-      continue;
-    }
-    if(dflag == 1 && strlen(inputDir) == 0){
-      inputDir = malloc((strlen(argv[i])+1)*sizeof(char));
-      strcpy(inputDir, argv[i]);
-      continue;
-    }
-    if(oflag == 0 && strcmp(argv[i],"-o") == 0){
-      oflag = 1;
-      continue;
-    }
-    if(oflag == 1 && strlen(outputDir) == 0){
-      outputDir = malloc((strlen(argv[i])+1)*sizeof(char));
-      strcpy(outputDir, argv[i]);
-      continue;
-    }
-  }
-  
-   struct stat st = {0};
-  //check if there is a path, if there is then call
-  printf("Initial PID: %d\n", getpid());
-  printf("PIDs of all children processes: ");
-  fflush(stdout);
-  if(stat(inputDir, &st) == -1){
-	  if(stat(outputDir, &st) == -1){
-		traverse("./\0", column, "./\0");
+	int i;
+	int cflag = 0;
+	int dflag = 0;
+	int oflag = 0;
+	char* column = "";
+	char* inputDir = "";
+	char* outputDir = ""; 
+	shared = mmap(NULL, sizeof(int), PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
+	*shared = *shared + 1;
+	if(argc != 7){
+		//error: incorrect number of arguments
+	}
+	for(i = 0; i < argc; i++){
+		if(cflag == 0 && strcmp(argv[i], "-c") == 0){
+			cflag = 1;
+			continue;
 		}
-	else{
-    traverse("./\0", column, outputDir);
+		if(cflag == 1 && strlen(column) == 0){
+			column = malloc((strlen(argv[i])+1)*sizeof(char));
+			strcpy(column, argv[i]);
+			continue;
+		}
+		if(strcmp(argv[i],"-d") == 0){
+			dflag = 1;
+			continue;
+		}
+		if(dflag == 1 && strlen(inputDir) == 0){
+			inputDir = malloc((strlen(argv[i])+1)*sizeof(char));
+			strcpy(inputDir, argv[i]);
+			continue;
+		}
+		if(oflag == 0 && strcmp(argv[i],"-o") == 0){
+			oflag = 1;
+			continue;
+		}
+		if(oflag == 1 && strlen(outputDir) == 0){
+			outputDir = malloc((strlen(argv[i])+1)*sizeof(char));
+			strcpy(outputDir, argv[i]);
+			continue;
+		}
 	}
+  
+	struct stat st = {0};
+	//check if there is a path, if there is then call
+	printf("Initial PID: %d\n", getpid());
+	printf("PIDs of all children processes: ");
+	fflush(stdout);
+	if(stat(inputDir, &st) == -1)
+	{
+		if(stat(outputDir, &st) == -1)
+		{
+			traverse("./\0", column, "./\0");
+		}
+		else
+		{
+			traverse("./\0", column, outputDir);
+		}
 	}
 	else
 	{
-	  if(stat(outputDir, &st) == -1){
-		traverse(inputDir, column, "./\0");
-	}
-	else
-	{
-	  traverse(inputDir, column, outputDir);
-	}
+		if(stat(outputDir, &st) == -1)
+		{
+			traverse(inputDir, column, "./\0");
+		}
+		else
+		{
+			traverse(inputDir, column, outputDir);
+		}	
 	}
 	printf("\nTotal number of processes: %d\n", *shared);
 	free(inputDir);
