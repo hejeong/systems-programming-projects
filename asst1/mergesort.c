@@ -1,9 +1,9 @@
-#include "simpleCSVsorter.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include "simpleCSVsorter.h"
 //the merging part of merge sort
  head* merge( head* rootL,  head* rootR, int position)
 {
