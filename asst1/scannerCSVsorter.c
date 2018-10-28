@@ -285,7 +285,7 @@ void traverse(char* name, char* column, char* outputDir){
 					exit(0);
 				}else if(pid > 0){
 					
-					wait();
+					wait(NULL);
 				}
 	//			printf("%s is csv file\n", ent->d_name);
 			}
@@ -299,7 +299,7 @@ void traverse(char* name, char* column, char* outputDir){
 					traverse(path,column, outputDir);
 					exit(0);
 				}else if(pid > 0){
-					wait();
+					wait(NULL);
 				}
 				//printf("is dir\n");
             }
