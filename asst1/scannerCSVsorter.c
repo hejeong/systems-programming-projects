@@ -21,7 +21,7 @@ makefile shit - done
 #include <sys/wait.h>
 #include <stddef.h>
 #include <unistd.h>
-#include "simpleCSVsorter.h"
+#include "scannerCSVsorter.h"
 int* shared;
 
 char* strsplit(char* str){
@@ -287,6 +287,7 @@ const char *getExt(char *filename) {
 
 void traverse(char* name, char* column, char* outputDir){
 		char* path;
+		char* relPath;
         DIR* dir;
          struct dirent *ent;
          struct stat states;
@@ -308,7 +309,7 @@ void traverse(char* name, char* column, char* outputDir){
                 continue;
             }
             else{
-			path = malloc((strlen(name)+1+1+1+strlen(ent->d_name))*sizeof(char));
+			path = malloc((strlen(name)+5+strlen(ent->d_name))*sizeof(char));
 			if(path == NULL)
 			{
 			return;
@@ -329,8 +330,12 @@ void traverse(char* name, char* column, char* outputDir){
 					printf(" %d,", getpid());
 					fflush(stdout);
 					*shared = *shared + 1;
-					char relPath[100];
-					strcat(relPath, "./");
+					relPath = malloc(sizeof(char)*(strlen(path)+10));
+					if(relPath == NULL)
+					{
+						return;
+					}
+					strcpy(relPath, "./");
 					strcat(relPath, path);
 					sortCSV(relPath,column, outputDir);
 					exit(0);
@@ -338,7 +343,6 @@ void traverse(char* name, char* column, char* outputDir){
 					
 					wait(NULL);
 				}
-	//			printf("%s is csv file\n", ent->d_name);
 			}
 			else if(S_ISDIR(states.st_mode))
 			{
@@ -352,7 +356,6 @@ void traverse(char* name, char* column, char* outputDir){
 				}else if(pid > 0){
 					wait(NULL);
 				}
-				//printf("is dir\n");
             }
             }
         }

@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include "simpleCSVsorter.h"
+#include "scannerCSVsorter.h"
 //the merging part of merge sort
  head* merge( head* rootL,  head* rootR, int position)
 {
