@@ -370,6 +370,7 @@ int main(int argc, char* argv[]){
 	int dflag = 0;
 	int oflag = 0;
 	int noInputDir = 0;
+	int noColumn = 0;
 	char* column = "";
 	char* inputDir = "";
 	char* outputDir = ""; 
@@ -383,6 +384,10 @@ int main(int argc, char* argv[]){
 			cflag = 1;
 			continue;
 		}
+		if(cflag == 1 && strlen(column) == 0 && (strcmp(argv[i], "-o") == 0 && strcmp(argv[i], "-c") == 0) && noColumn == 0){
+			noColumn == 0;
+			return 0;
+		}
 		if(cflag == 1 && strlen(column) == 0){
 			column = malloc((strlen(argv[i])+1)*sizeof(char));
 			strcpy(column, argv[i]);
@@ -392,7 +397,7 @@ int main(int argc, char* argv[]){
 			dflag = 1;
 			continue;
 		}
-		if(dflag == 1 && strlen(inputDir) == 0 && strcmp(argv[i], "-o") == 0 && noInputDir == 0){
+		if(dflag == 1 && strlen(inputDir) == 0 && (strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "-c") == 0) && noInputDir == 0){
 			noInputDir = 1;
 			inputDir = malloc(sizeof(char)*2);
 			strcpy(inputDir, " ");
