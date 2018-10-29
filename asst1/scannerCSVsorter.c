@@ -369,6 +369,7 @@ int main(int argc, char* argv[]){
 	int cflag = 0;
 	int dflag = 0;
 	int oflag = 0;
+	int noInputDir = 0;
 	char* column = "";
 	char* inputDir = "";
 	char* outputDir = ""; 
@@ -391,7 +392,11 @@ int main(int argc, char* argv[]){
 			dflag = 1;
 			continue;
 		}
-		if(dflag == 1 && strlen(inputDir) == 0){
+		if(dflag == 1 && strlen(inputDir) == 0 && strcmp(argv[i], "-o") == 0 && noInputDir == 0){
+			noInputDir = 1;
+			inputDir = " ";
+		}
+		if(dflag == 1 && strlen(inputDir) == 0 && noInputDir != 1){
 			inputDir = malloc((strlen(argv[i])+1)*sizeof(char));
 			strcpy(inputDir, argv[i]);
 			continue;
@@ -406,7 +411,7 @@ int main(int argc, char* argv[]){
 			continue;
 		}
 	}
-  
+  	printf("column: %s, input: %s, output: %s\n", column, inputDir, outputDir);
 	struct stat st = {0};
 	//check if there is a path, if there is then call
 	printf("Initial PID: %d\n", getpid());
