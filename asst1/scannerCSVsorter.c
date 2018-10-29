@@ -80,13 +80,14 @@ char* strip(char *string){
   return string;
 }
 
-int sortCSV(char* inputFile, char* columnName, char* outputDir){
+int sortCSV(char* newFile, char* columnName, char* outputDir){
 	// create file pointer
 	FILE* fpointer;
 	FILE *fp;
 	// file pointer reads from stdin
+	char* inputFile = malloc(sizeof(char)*(strlen(inputFile)+strlen(columnName)+20));
+	strcpy(inputFile, newFile);
 	fpointer = fopen(inputFile, "r");
-	  
 	char* val;
 	char line[512]; 
 	node* categories = malloc(sizeof( node));
@@ -330,7 +331,7 @@ void traverse(char* name, char* column, char* outputDir){
 					printf(" %d,", getpid());
 					fflush(stdout);
 					*shared = *shared + 1;
-					relPath = malloc(sizeof(char)*(strlen(path)+10));
+					relPath = malloc(sizeof(char)*(strlen(path)+5));
 					if(relPath == NULL)
 					{
 						return;
