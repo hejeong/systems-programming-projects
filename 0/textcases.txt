@@ -1,0 +1,157 @@
+Case 1
+	general test
+		input: 
+			ha$'\t'ha1da2b#f5g\as7HA
+		expected output: 
+			HA
+			ha
+			ha
+			gas
+			f
+			da
+			b
+Case 2
+	letters only
+		input:
+			haha
+		expected output:
+			haha
+Case 3
+	numbers only
+		input:
+			43134
+		expected output:
+Case 4
+	letters and numbers
+		input:
+			haha21da
+		expected output:
+			haha
+			da
+Case 5
+	letters and numbers 
+		input:
+			5haha21da5
+		expected output:
+			haha
+			da
+Case 6
+	letters and numbers with escape sequences in no quotes
+		input:
+			haha$'\t'da
+		expected output:
+			haha
+			da
+Case 7
+	long series of random letters numbers and spaces in quotes
+		input:
+			fja9p3v85mutpoijmgropmu390av485uk-t0a348kg609kuat-8gtuk9auie4v4f907f5u4 itajb9871q34509g68joq3ujhta3456ty89oghvqh348oayv7jfu9tuja37490j8gasvlt4ij90guq257uj90rf5834fau5j8z98o3g6t
+		expected output:
+			z
+			v
+			v
+			uk
+			ujhta
+			uj
+			u
+			ty
+			tuja
+			t
+			t
+			rf
+			q
+			p
+			oghvqh
+			oayv
+			o
+			mutpoijmgropmu
+			kuat
+			kg
+			joq
+			jfu
+			j
+			j
+			itajb
+			ij
+			guq
+			gtuk
+			gasvlt
+			g
+			g
+			fja
+			fau
+			f
+			f
+			av
+			auie
+			a
+Case 8
+	redundant characters
+		input:
+			t t t ty t t t 
+		expected output:
+			ty
+			t 
+			t 
+			t 
+			t 
+			t 
+			t
+Case 9
+	alphabetical sorting test
+		input: 
+			a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z
+		expected output:
+			Z
+			Y
+			X
+			W
+			V
+			U
+			T
+			S
+			R
+			Q
+			P
+			O
+			N
+			M
+			L
+			K
+			J
+			I
+			H
+			G
+			F
+			E							
+			D
+			C
+			B
+			A
+			z
+			y
+			x
+			w
+			v
+			u
+			t
+			s
+			r
+			q
+			p
+			o
+			n
+			m
+			l
+			k
+			j
+			i
+			h
+			g
+			f
+			e
+			d
+			c
+			b
+			a
+Case 10

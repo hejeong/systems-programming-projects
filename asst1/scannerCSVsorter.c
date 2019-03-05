@@ -384,8 +384,7 @@ int main(int argc, char* argv[]){
 			cflag = 1;
 			continue;
 		}
-		if(cflag == 1 && strlen(column) == 0 && (strcmp(argv[i], "-o") == 0 && strcmp(argv[i], "-c") == 0) && noColumn == 0){
-			noColumn == 0;
+		if(cflag == 1 && strlen(column) == 0 && (strcmp(argv[i], "-o") == 0 && strcmp(argv[i], "-d") == 0) && noColumn == 0){
 			return 0;
 		}
 		if(cflag == 1 && strlen(column) == 0){
@@ -422,9 +421,18 @@ int main(int argc, char* argv[]){
 	printf("Initial PID: %d\n", getpid());
 	printf("PIDs of all children processes: ");
 	fflush(stdout);
+	
+	if(stat(outputDir, &st) == -1)
+	{
+		return 0;
+	}
 	if(stat(inputDir, &st) == -1)
 	{
-		if(stat(outputDir, &st) == -1)
+		return 0;
+	}
+	if(strcmp(inputDir, " ") == 0)
+	{
+		if(strcmp(outputDir, " ") == 0)
 		{
 			traverse("./\0", column, "./\0");
 		}
@@ -435,7 +443,7 @@ int main(int argc, char* argv[]){
 	}
 	else
 	{
-		if(stat(outputDir, &st) == -1)
+		if(strcmp(outputDir, " ") == 0)
 		{
 			traverse(inputDir, column, "./\0");
 		}
