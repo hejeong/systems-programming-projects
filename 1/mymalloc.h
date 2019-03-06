@@ -1,1 +1,1 @@
-s
+static char myblock[4096]
