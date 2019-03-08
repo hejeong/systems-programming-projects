@@ -3,8 +3,6 @@
 #include <ctype.h>
 #include <string.h>
 
-static char myblock[4096];
-
 struct data //metadata, first is the first two digits, second is last two digits of how much space the following block takes up
 {
 	char Num1;
@@ -54,6 +52,10 @@ void initialize(){
 }
 
 void * myMalloc(int size, int file, int line){
+	if(size <= 0)
+	{
+		printf("invalid size\n");
+	}
 	if(!compMagic(myblock[0], myblock[1]))
 	{
 		myblock[0] = 'U';
@@ -87,16 +89,16 @@ void * myMalloc(int size, int file, int line){
 			i = i + 4 + blockSize;
 		}
 	}
-	printf("too big\n");
+	printf("not enough memory\n");
 	return NULL;
 }
 
 char * myFree(void * ptr, int file, int line){
 	ptr = ptr - 4;
-	char firstNum = *((char *)ptr);
-	char secondNum = *((char *)(ptr + 1));
 	if((char*)ptr <= &myblock[4092] && (char*)ptr >= &myblock[0])
 	{
+		char firstNum = *((char *)ptr);
+		char secondNum = *((char *)(ptr + 1));
 		if(compMagic(firstNum, secondNum) == 2)
 		{
 			*((char *)ptr) = 'U';
@@ -108,18 +110,17 @@ char * myFree(void * ptr, int file, int line){
 			{
 				blockSize = blockSize + 4 + convertToSize(*((char *)(ptr + 6 + blockSize)), *((char *)(ptr + 7 + blockSize)));
 			}
-			printf("blocksize%d\n",blockSize);
 			*((char *)(ptr + 2)) = convertToFirstChar(blockSize);
 			*((char *)(ptr + 3)) = convertToSecondChar(blockSize);
 		}
 		else
 		{
-			printf("not allocated\n");
+			printf("invalid pointer\n");
 		}
 	}
 	else 
 	{
-		printf("out of bounds\n");
+		printf("not a pointer or out of bounds\n");
 	}
 	return NULL;
 }
@@ -132,8 +133,11 @@ int main(int argc, char* argv[]){ //test
 	if(ptr != NULL)
 	{
 		printf("%c\n",*(char*)ptr);
+		int x;
+		myFree((int*)x,4,4);
 		myFree(ptr,4,4);
 	}
+	myMalloc(12041,4,4);
 	printf("%c\n%c\n%c\n%c\n", myblock[0],myblock[1],myblock[2],myblock[3]);
 	return 0;
 }
