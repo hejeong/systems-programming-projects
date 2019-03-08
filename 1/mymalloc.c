@@ -74,11 +74,11 @@ void * myMalloc(int size, int file, int line){
 			myblock[i+1] = 'L';
 			myblock[i+2] = convertToFirstChar(size);
 			myblock[i+3] = convertToSecondChar(size);
-			i = i + blockSize + 4;
-			myblock[i] = 'U';
-			myblock[i+1] = 'A';
-			myblock[i+2] = convertToFirstChar(blockSize - 4 - size);
-			myblock[i+3] = convertToSecondChar(blockSize - 4 - size);
+			int next = i + size + 4;
+			myblock[next] = 'U';
+			myblock[next+1] = 'A';
+			myblock[next+2] = convertToFirstChar(blockSize - 4 - size);
+			myblock[next+3] = convertToSecondChar(blockSize - 4 - size);
 			void * ptr = &myblock[i+4];
 			return ptr;
 		}
@@ -87,15 +87,15 @@ void * myMalloc(int size, int file, int line){
 			i = i + 4 + blockSize;
 		}
 	}
-	//error goes here
+	printf("too big\n");
 	return NULL;
 }
 
-char * myFree(void * ptr){
+char * myFree(void * ptr, int file, int line){
 	ptr = ptr - 4;
 	char firstNum = *((char *)ptr);
 	char secondNum = *((char *)(ptr + 1));
-	if(ptr <= &myblock[4092] && ptr >= &myblock[0])
+	if((char*)ptr <= &myblock[4092] && (char*)ptr >= &myblock[0])
 	{
 		if(compMagic(firstNum, secondNum) == 2)
 		{
@@ -104,25 +104,36 @@ char * myFree(void * ptr){
 			int blockSize = convertToSize( *((char *)(ptr + 2)) , *((char *)(ptr + 3)) );
 			char secondBlock1 = *((char *)(ptr + 4 + blockSize));
 			char secondBlock2 = *((char *)(ptr + 5 + blockSize));
-			if(compMagic(secondBlock1, secondBlock2) == 2)
+			if(compMagic(secondBlock1, secondBlock2) == 1)
 			{
-				blockSize = blockSize + convertToSize(*((char *)(ptr + 6 + blockSize)), *((char *)(ptr + 7 + blockSize)));
+				blockSize = blockSize + 4 + convertToSize(*((char *)(ptr + 6 + blockSize)), *((char *)(ptr + 7 + blockSize)));
 			}
+			printf("blocksize%d\n",blockSize);
 			*((char *)(ptr + 2)) = convertToFirstChar(blockSize);
-			*((char *)(ptr + 3)) = convertToFirstChar(blockSize);
+			*((char *)(ptr + 3)) = convertToSecondChar(blockSize);
 		}
-		//error
+		else
+		{
+			printf("not allocated\n");
+		}
 	}
-	//error
+	else 
+	{
+		printf("out of bounds\n");
+	}
 	return NULL;
 }
 
 int main(int argc, char* argv[]){ //test
-	int i = 232;
-	int j = 4124;
-	myblock[0] = 'g';
-	myblock[1] = 'j';
-	void * ptr = &myblock[0];
-	printf("%c\n", *(char*)ptr);
-	printf("%c\n", *(char*)(ptr+1));
+	myblock[4] = 'j';
+	char * ptr = myMalloc(4,4,4);
+	printf("%c\n%c\n%c\n%c\n", myblock[0],myblock[1],myblock[2],myblock[3]);
+	printf("%c\n%c\n%c\n%c\n", myblock[8],myblock[9],myblock[10],myblock[11]);
+	if(ptr != NULL)
+	{
+		printf("%c\n",*(char*)ptr);
+		myFree(ptr,4,4);
+	}
+	printf("%c\n%c\n%c\n%c\n", myblock[0],myblock[1],myblock[2],myblock[3]);
+	return 0;
 }
