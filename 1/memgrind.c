@@ -4,7 +4,11 @@
 #include <sys/time.h>
 #include <ctype.h> 
 #include <string.h>
-//#include "mymalloc.h"
+#include "mymalloc.h"
+
+#define malloc(x) myMalloc(x,__FILE__,__LINE__);
+#define free(x) myFree(x,__FILE__,__LINE__);
+
 
 void workloadA();
 void workloadB();

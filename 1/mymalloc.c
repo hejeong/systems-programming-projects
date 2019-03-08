@@ -1,15 +1,18 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <ctype.h>
+#include <stdio.h> 
+#include <stdlib.h> 
+#include <time.h> 
+#include <sys/time.h>
+#include <ctype.h> 
 #include <string.h>
+#include "mymalloc.h"
 
-struct data //metadata, first is the first two digits, second is last two digits of how much space the following block takes up
+/*struct data //metadata, first is the first two digits, second is last two digits of how much space the following block takes up
 {
 	char Num1;
 	char Num2;
 	char Size1;
 	char Size2;
-};
+}; unused for now*/
 
 int compMagic(char first, char second){
 	if(first == 'U' && second == 'A')
@@ -41,7 +44,7 @@ char convertToSecondChar(int num){
 	return c;
 }
 
-void initialize(){
+/*void initialize(){
 	struct data meta;
 	meta.Num1 = 'A';
 	meta.Num2 = 'B';
@@ -49,7 +52,7 @@ void initialize(){
 	meta.Size2 = convertToSecondChar(4096);
 	void * ptr = &myblock[0];
 	*(struct data*)ptr = meta;
-}
+}*/
 
 void * myMalloc(int size, int file, int line){
 	if(size <= 0)
@@ -125,7 +128,7 @@ char * myFree(void * ptr, int file, int line){
 	return NULL;
 }
 
-int main(int argc, char* argv[]){ //test
+/*int main(int argc, char* argv[]){ //test
 	myblock[4] = 'j';
 	char * ptr = myMalloc(4,4,4);
 	printf("%c\n%c\n%c\n%c\n", myblock[0],myblock[1],myblock[2],myblock[3]);
@@ -140,4 +143,4 @@ int main(int argc, char* argv[]){ //test
 	myMalloc(12041,4,4);
 	printf("%c\n%c\n%c\n%c\n", myblock[0],myblock[1],myblock[2],myblock[3]);
 	return 0;
-}
+}*/
