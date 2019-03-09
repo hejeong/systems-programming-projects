@@ -5,7 +5,7 @@
 #include <ctype.h> 
 #include <string.h>
 #include "mymalloc.h"
-
+// hi
 /*struct data //metadata, first is the first two digits, second is last two digits of how much space the following block takes up
 {
 	char Num1;

@@ -8,7 +8,7 @@
 
 #define malloc(x) myMalloc(x,__FILE__,__LINE__);
 #define free(x) myFree(x,__FILE__,__LINE__);
-
+// hi
 
 void workloadA();
 void workloadB();
@@ -18,7 +18,7 @@ void workloadD();
 int main(int argc, char** argv){
 	struct timeval tvStart, tvAfter;
 	int j, a=0, b=0, c=0, d=0;
-	/*for(j=0; j<100; j++){
+	for(j=0; j<100; j++){
 		gettimeofday(&tvStart, NULL);
 		workloadA();
 		gettimeofday(&tvAfter, NULL);
@@ -31,19 +31,19 @@ int main(int argc, char** argv){
 		workloadC();
 		gettimeofday(&tvAfter, NULL);
 		c+=(tvAfter.tv_sec*1000000L+tvAfter.tv_usec)-(tvStart.tv_sec*1000000L+tvStart.tv_usec);
-		gettimeofday(&tvStart, NULL);
+	/*	gettimeofday(&tvStart, NULL);
 		workloadD();
 		gettimeofday(&tvAfter, NULL);
 		d+=(tvAfter.tv_sec*1000000L+tvAfter.tv_usec)-(tvStart.tv_sec*1000000L+tvStart.tv_usec);
-	}*/
-/*	printf("Mean runtime A: %ld microseconds\n", a/100); 
+		*/
+	}
+	printf("Mean runtime A: %ld microseconds\n", a/100); 
 	printf("Mean runtime B: %ld microseconds\n", b/100); 
 	printf("Mean runtime C: %ld microseconds\n", c/100); 
-	printf("Mean runtime D: %ld microseconds\n", d/100); */
-	workloadA();
-	workloadB();
-	workloadC();
-	workloadD();
+/*	printf("Mean runtime D: %ld microseconds\n", d/100); */
+//	workloadB();
+//	workloadC();
+//	workloadD();
 }
 /*	
 void runTime(){
@@ -64,9 +64,9 @@ void runTime(){
 void workloadA(){
 	int i;
 	for(i=0; i<150; i++){
-		void *ptr = malloc(1*sizeof(char)); 
+		void *ptr = myMalloc(1*sizeof(char),4,4); 
 		if(ptr != NULL){
-			free(ptr);
+			myFree(ptr,4,4);
 		}
 	}
 }
@@ -75,14 +75,14 @@ void workloadB(){
 	int i, counter = 0, iterations = 0;
 	void *collection[50];
 	while(iterations != 3){
-		void *ptr = malloc(1*sizeof(char));
+		void *ptr = myMalloc(1*sizeof(char),4,4);
 		if(ptr != NULL){
 			collection[counter] = ptr;
 			counter++;
 		}
 		if(counter == 50){
 			while(counter > 0){
-				free(collection[counter-1]);
+				myFree(collection[counter-1],4,4);
 				counter--;
 			}
 			iterations++;
@@ -103,14 +103,14 @@ void workloadC(){
 		randomInt = rand() % 2;
 		// case 1: malloc() 1 byte
 		if(randomInt == 1){
-			void *ptr = malloc(1*sizeof(char));
+			void *ptr = myMalloc(1*sizeof(char),4,4);
 			// check if malloc succeeds
 			if(ptr != NULL){
 				//SUCCESS: 
 				// 1) store returned pointer 
 				// 2) increment malloc counter by 1
 				// 3) increase # of elements in array
-				collection[counter] = ptr;
+				collection[elements] = ptr;
 				counter++;
 				elements++;
 			}
@@ -118,15 +118,20 @@ void workloadC(){
 		// case 2: free()
 			if(elements > 0){
 				//free if there exists malloc()ed elements
-				free(collection[elements-1]);
+				myFree(collection[elements-1],4,4);
 				//decrement # of elements by 1
 				elements--;
 			}
 		}
 	}
-	
+	while(elements > 0){
+		//free if there exists malloc()ed elements
+		myFree(collection[elements-1],4,4);
+		//decrement # of elements by 1
+		elements--;
+	}
 }
-
+/*
 void workloadD(){
 	srand(time(0));
 	int bytesFree, timesMalloced = 0, elements = 0, mallocFlag;
@@ -135,7 +140,7 @@ void workloadD(){
 		mallocFlag = rand() % 2;
 		if(mallocFlag == 1){
 			int randomSize = rand()%64 + 1;
-			void *ptr = malloc(randomSize*sizeof(char));
+			void *ptr = myMalloc(randomSize*sizeof(char),4,4);
 			if(ptr != NULL){
 				collection[elements] = ptr;
 				elements++;
@@ -144,14 +149,14 @@ void workloadD(){
 		}else{
 			if(elements > 0){
 				//free if there exists malloc()ed elements
-				free(collection[elements-1]);
+				myFree(collection[elements-1],4,4);
 				//decrement # of elements by 1
 				elements--;
 			}
 		}
 	}
 	while(elements > 0){
-		free(collection[elements-1]);
+		myFree(collection[elements-1],4,4);
 		elements--;
 	}
 }
@@ -161,7 +166,7 @@ void workloadE(){
 	void *collection[512];
 	//malloc 512 '4-bytes' of memory; total: 2048 bytes
 	for(i=0; i<512; i++){
-		int *ptr = malloc(4*sizeof(char));
+		void *ptr = myMalloc(4*sizeof(char),4,4);
 		collection[i] = ptr;
 	}
 	int lastBlockSize = 4, lastIndex = 511;
@@ -171,13 +176,13 @@ void workloadE(){
 	// i.e. first iteration: 4 + 4 + 4 = 12, 
 	// i.e. second iteration: 12 + 4 + 4 = 20
 	while(lastBlockSize < 2048){
-		free(collection[lastIndex]);
-		free(collection[lastIndex-1]);
+		myFree(collection[lastIndex],4,4);
+		myFree(collection[lastIndex-1],4,4);
 		//lastIndex decremented to store return pointer of combined blocks
 		lastIndex--;
 		lastBlockSize += 4 + 4;
-		int *ptr = malloc(lastBlockSize*sizeof(char));
+		void *ptr = myMalloc(lastBlockSize*sizeof(char),4,4);
 		collection[lastIndex] = ptr;
 	}
-}
+}*/
 
