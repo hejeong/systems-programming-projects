@@ -49,14 +49,20 @@ char convertToSecondChar(int num){
 }
 
 void * findPreviousBlock(void * ptr){
-	/*while((char*)ptr >= &myblock[0])
+	void * block = &myblock[0];
+	while((char*)block < &myblock[4096])
 	{
-		ptr--;
-		if(compMagic(*(char*)ptr,*(char*)(ptr+1)))
+		int blockSize = convertToSize(*(char*)(block+2),*(char*)(block+3));
+		
+		if(compMagic(*(char*)block,*(char*)(block+1)) == 1 && (block + 4 + blockSize == ptr))
 		{
-			return ptr;
+			return block;
 		}
-	}*/
+		else
+		{
+			block = block + 4 + blockSize;
+		}
+	}
 	return NULL;
 }
 
@@ -71,7 +77,6 @@ void * myMalloc(int size, int file, int line){
 		myblock[1] = 'A';
 		myblock[2] = convertToFirstChar(4096);
 		myblock[3] = convertToSecondChar(4096);
-		printf("initialized\n");
 	}
 	
 	int i = 0;
@@ -99,7 +104,8 @@ void * myMalloc(int size, int file, int line){
 			i = i + 4 + blockSize;
 		}
 	}
-	printf("not enough memory\n");
+	
+	printf("not enough memory for %d bytes\n", size);
 	return NULL;
 }
 
@@ -120,7 +126,7 @@ char * myFree(void * ptr, int file, int line){
 			{
 				blockSize = blockSize + 4 + convertToSize(*((char *)(ptr + 6 + blockSize)), *((char *)(ptr + 7 + blockSize)));
 			}
-			/*void * prevBlock = findPreviousBlock(ptr);
+			void * prevBlock = findPreviousBlock(ptr);
 			if(prevBlock != NULL)
 			{
 				if(compMagic(*(char*)prevBlock,*(char*)(prevBlock+1)) == 1)
@@ -128,7 +134,7 @@ char * myFree(void * ptr, int file, int line){
 					blockSize = blockSize + 4 + convertToSize(*(char*)(prevBlock+2),*(char*)(prevBlock+3));
 					ptr = prevBlock;
 				}
-			}*/
+			}
 			
 			*((char *)(ptr + 2)) = convertToFirstChar(blockSize);
 			*((char *)(ptr + 3)) = convertToSecondChar(blockSize);

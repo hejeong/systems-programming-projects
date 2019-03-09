@@ -14,12 +14,12 @@ void workloadB();
 void workloadC();
 void workloadD();
 void workloadE();
+void workloadF();
 //void runTime();
 int main(int argc, char** argv){
 	struct timeval tvStart, tvAfter;
-	int j, a=0, b=0, c=0, d=0, e=0;
-	printf("0 - %c, 1 - %c, 2 - %c, 3 - %c \n", myblock[0],  myblock[1],  myblock[2] , myblock[3]);
-	/*for(j=0; j<100; j++){
+	int j, a=0, b=0, c=0, d=0, e=0, f=0;
+	for(j=0; j<100; j++){
 		gettimeofday(&tvStart, NULL);
 		workloadA();
 		gettimeofday(&tvAfter, NULL);
@@ -39,14 +39,18 @@ int main(int argc, char** argv){
 		gettimeofday(&tvStart, NULL);
 		workloadE();
 		gettimeofday(&tvAfter, NULL);
-		e+=(tvAfter.tv_sec*1000000L+tvAfter.tv_usec)-(tvStart.tv_sec*1000000L+tvStart.tv_usec);	
-	}*/
-	workloadE();
+		e+=(tvAfter.tv_sec*1000000L+tvAfter.tv_usec)-(tvStart.tv_sec*1000000L+tvStart.tv_usec);
+		gettimeofday(&tvStart, NULL);
+		workloadF();
+		gettimeofday(&tvAfter, NULL);
+		f+=(tvAfter.tv_sec*1000000L+tvAfter.tv_usec)-(tvStart.tv_sec*1000000L+tvStart.tv_usec);			
+	}
 	printf("Mean runtime A: %ld microseconds\n", a/100); 
 	printf("Mean runtime B: %ld microseconds\n", b/100); 
 	printf("Mean runtime C: %ld microseconds\n", c/100); 
 	printf("Mean runtime D: %ld microseconds\n", d/100);
 	printf("Mean runtime E: %ld microseconds\n", e/100);
+	printf("Mean runtime F: %ld microseconds\n", f/100);
 }
 /*	
 void runTime(){
@@ -191,5 +195,37 @@ void workloadE(){
 	}
 	// free last block of size 4094 bytes
 	myFree(collection[lastIndex],4,4);
-	printf("0 - %c, 1 - %c, 2 - %c, 3 - %c \n", myblock[0],  myblock[1],  myblock[2] , myblock[3]);
+}
+void workloadF(){
+	void *collection[512];
+	int i = 0;
+	void * ptr;
+
+	for(i = 0; i < 512; i++)
+	{
+		ptr = myMalloc(4,4,4);
+		if(ptr != NULL)
+		{
+			collection[i] = ptr;
+		}
+	}
+	for(i = 511; i >= 0; i--)
+	{
+		myFree(collection[i],4,4);
+		myFree(collection[i],4,4);
+	}
+	
+	for(i = 0; i < 512; i++)
+	{
+		ptr = myMalloc(4,4,4);
+		if(ptr != NULL)
+		{
+			collection[i] = ptr;
+		}
+	}
+	for(i = 0; i < 512; i++)
+	{
+		myFree(collection[i],4,4);
+		myFree(collection[i],4,4);
+	}
 }
