@@ -14,12 +14,13 @@ void workloadA();
 void workloadB();
 void workloadC();
 void workloadD();
+void workloadF();
 //void runTime();
 int main(int argc, char** argv){
 	struct timeval tvStart, tvAfter;
-	int j, a=0, b=0, c=0, d=0;
+	int j, a=0, b=0, c=0, d=0, f=0;
 	for(j=0; j<100; j++){
-		gettimeofday(&tvStart, NULL);
+		/*gettimeofday(&tvStart, NULL);
 		workloadA();
 		gettimeofday(&tvAfter, NULL);
 		a+=(tvAfter.tv_sec*1000000L+tvAfter.tv_usec)-(tvStart.tv_sec*1000000L+tvStart.tv_usec);
@@ -30,7 +31,11 @@ int main(int argc, char** argv){
 		gettimeofday(&tvStart, NULL);
 		workloadC();
 		gettimeofday(&tvAfter, NULL);
-		c+=(tvAfter.tv_sec*1000000L+tvAfter.tv_usec)-(tvStart.tv_sec*1000000L+tvStart.tv_usec);
+		c+=(tvAfter.tv_sec*1000000L+tvAfter.tv_usec)-(tvStart.tv_sec*1000000L+tvStart.tv_usec);*/
+		gettimeofday(&tvStart, NULL);
+		workloadF();
+		gettimeofday(&tvAfter, NULL);
+		f+=(tvAfter.tv_sec*1000000L+tvAfter.tv_usec)-(tvStart.tv_sec*1000000L+tvStart.tv_usec);
 	/*	gettimeofday(&tvStart, NULL);
 		workloadD();
 		gettimeofday(&tvAfter, NULL);
@@ -40,10 +45,12 @@ int main(int argc, char** argv){
 	printf("Mean runtime A: %ld microseconds\n", a/100); 
 	printf("Mean runtime B: %ld microseconds\n", b/100); 
 	printf("Mean runtime C: %ld microseconds\n", c/100); 
+	printf("Mean runtime F: %ld microseconds\n", f/100); 
 /*	printf("Mean runtime D: %ld microseconds\n", d/100); */
 //	workloadB();
 //	workloadC();
 //	workloadD();
+	return 0;
 }
 /*	
 void runTime(){
@@ -64,11 +71,12 @@ void runTime(){
 void workloadA(){
 	int i;
 	for(i=0; i<150; i++){
-		void *ptr = myMalloc(1*sizeof(char),4,4); 
+		void *ptr = myMalloc(sizeof(char),4,4); 
 		if(ptr != NULL){
 			myFree(ptr,4,4);
 		}
 	}
+	trigger();
 }
 
 void workloadB(){

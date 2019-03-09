@@ -14,6 +14,10 @@
 	char Size2;
 }; unused for now*/
 
+void trigger(){
+	printf("%c\n%c\n%c\n%c\n", myblock[0],myblock[1],myblock[2],myblock[3]);
+}
+
 int compMagic(char first, char second){
 	if(first == 'U' && second == 'A')
 	{
@@ -44,27 +48,30 @@ char convertToSecondChar(int num){
 	return c;
 }
 
-/*void initialize(){
-	struct data meta;
-	meta.Num1 = 'A';
-	meta.Num2 = 'B';
-	meta.Size1 = convertToFirstChar(4096);
-	meta.Size2 = convertToSecondChar(4096);
-	void * ptr = &myblock[0];
-	*(struct data*)ptr = meta;
-}*/
+void * findPreviousBlock(void * ptr){
+	/*while((char*)ptr >= &myblock[0])
+	{
+		ptr--;
+		if(compMagic(*(char*)ptr,*(char*)(ptr+1)))
+		{
+			return ptr;
+		}
+	}*/
+	return NULL;
+}
 
 void * myMalloc(int size, int file, int line){
 	if(size <= 0)
 	{
 		printf("invalid size\n");
 	}
-	if(!compMagic(myblock[0], myblock[1]))
+	if(compMagic(myblock[0], myblock[1]) == 0)
 	{
 		myblock[0] = 'U';
 		myblock[1] = 'A';
 		myblock[2] = convertToFirstChar(4096);
 		myblock[3] = convertToSecondChar(4096);
+		printf("initialized\n");
 	}
 	
 	int i = 0;
@@ -113,6 +120,16 @@ char * myFree(void * ptr, int file, int line){
 			{
 				blockSize = blockSize + 4 + convertToSize(*((char *)(ptr + 6 + blockSize)), *((char *)(ptr + 7 + blockSize)));
 			}
+			/*void * prevBlock = findPreviousBlock(ptr);
+			if(prevBlock != NULL)
+			{
+				if(compMagic(*(char*)prevBlock,*(char*)(prevBlock+1)) == 1)
+				{
+					blockSize = blockSize + 4 + convertToSize(*(char*)(prevBlock+2),*(char*)(prevBlock+3));
+					ptr = prevBlock;
+				}
+			}*/
+			
 			*((char *)(ptr + 2)) = convertToFirstChar(blockSize);
 			*((char *)(ptr + 3)) = convertToSecondChar(blockSize);
 		}
@@ -137,10 +154,8 @@ char * myFree(void * ptr, int file, int line){
 	{
 		printf("%c\n",*(char*)ptr);
 		int x;
-		myFree((int*)x,4,4);
 		myFree(ptr,4,4);
 	}
-	myMalloc(12041,4,4);
 	printf("%c\n%c\n%c\n%c\n", myblock[0],myblock[1],myblock[2],myblock[3]);
 	return 0;
 }*/
