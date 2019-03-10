@@ -1,0 +1,13 @@
+Workload E:
+We begin by dynamically allocating 512 4-byte blocks in our static array. Our metadata each take up 4 bytes of memory as well, so 4*512 + 4*512 = 4096,
+so our static array has been completely filled up. We then free the last two blocks, and since they are contiguous, we should be able to allocate the
+combined sizes of the freed blocks. For example, the first iteration, we free the last block (size 4 bytes), then the second block (size 4 bytes).
+We then test malloc()ing 12 bytes, which should work. {MATH: sizeof(lastBlock) + sizeof(secondToLastBlock) + sizeof(metadata)) => 4+4+4 = 12 bytes}
+Next iteration, we should be freeing the 12 byte block, and a 4 byte block, then reallocate a 20 byte block, etc.
+We wanted to include this workload test to confirm that we are efficiently allocating and freeing each requested block of memory without failure. 
+Workload F:
+This workload was designed the test the error catching of the malloc and free functions and the block merging capabilities of the free function. 
+First, 4 byte blocks were allocated to fill up the array, then the blocks were freed from the end of the array to the beginning of the array to
+test the program merging blocks that were freed with the blocks after them. Then the array was filled with 4 byte blocks once again however this 
+time the blocks were freed from the beginning of the array to the end in order to make sure the free functions merged the previous block with the
+newly freed one.

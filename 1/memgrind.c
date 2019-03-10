@@ -70,9 +70,9 @@ void runTime(){
 void workloadA(){
 	int i;
 	for(i=0; i<150; i++){
-		void *ptr = myMalloc(1*sizeof(char),4,4); 
+		void *ptr = malloc(1*sizeof(char)); 
 		if(ptr != NULL){
-			myFree(ptr,4,4);
+			free(ptr);
 		}
 	}
 }
@@ -81,14 +81,14 @@ void workloadB(){
 	int counter = 0, setsOfFifty = 0;
 	void *collection[50];
 	while(setsOfFifty != 3){
-		void *ptr = myMalloc(1*sizeof(char),4,4);
+		void *ptr = malloc(1*sizeof(char));
 		if(ptr != NULL){
 			collection[counter] = ptr;
 			counter++;
 		}
 		if(counter == 50){
 			while(counter > 0){
-				myFree(collection[counter-1],4,4);
+				free(collection[counter-1]);
 				counter--;
 			}
 			setsOfFifty++;
@@ -109,7 +109,7 @@ void workloadC(){
 		randomInt = rand() % 2;
 		// case 1: malloc() 1 byte
 		if(randomInt == 1){
-			void *ptr = myMalloc(1*sizeof(char),4,4);
+			void *ptr = malloc(1*sizeof(char));
 			// check if malloc succeeds
 			if(ptr != NULL){
 				//SUCCESS: 
@@ -125,7 +125,7 @@ void workloadC(){
 		// case 2: free()
 			if(elements > 0){
 				//free if there exists malloc()ed elements
-				myFree(collection[elements-1],4,4);
+				free(collection[elements-1]);
 				//decrement # of elements by 1
 				elements--;
 			}
@@ -133,7 +133,7 @@ void workloadC(){
 	}
 	while(elements > 0){
 		//free if there exists malloc()ed elements
-		myFree(collection[elements-1],4,4);
+		free(collection[elements-1]);
 		//decrement # of elements by 1
 		elements--;
 	}
@@ -148,7 +148,7 @@ void workloadD(){
 		i++;
 		if(mallocFlag == 1){
 			int randomSize = rand()%64 + 1;
-			void *ptr = myMalloc(randomSize*sizeof(char),4,4);
+			void *ptr = malloc(randomSize*sizeof(char));
 			if(ptr != NULL){
 				collection[elements] = ptr;
 				elements++;
@@ -158,14 +158,14 @@ void workloadD(){
 		}else{
 			if(elements > 0){
 				//free if there exists malloc()ed elements
-				myFree(collection[elements-1],4,4);
+				free(collection[elements-1]);
 				//decrement # of elements by 1
 				elements--;
 			}
 		}
 	}
 	while(elements > 0){
-		myFree(collection[elements-1],4,4);
+		free(collection[elements-1]);
 		elements--;
 		i++;
 	}
@@ -175,7 +175,7 @@ void workloadE(){
 	void *collection[512];
 	//malloc 512 '4-bytes' of memory; total: 2048 bytes, 2048 bytes of metadata
 	for(i=0; i<512; i++){
-		void *ptr = myMalloc(4*sizeof(char),4,4);
+		void *ptr = malloc(4*sizeof(char));
 		collection[i] = ptr;
 	}
 	int lastBlockSize = 4, lastIndex = 511;
@@ -185,16 +185,16 @@ void workloadE(){
 	// i.e. first iteration: 4 + 4 + 4 = 12,
 	// i.e. second iteration: 12 + 4 + 4 = 20
 	while(lastBlockSize < 4092){
-		myFree(collection[lastIndex],4,4);
-		myFree(collection[lastIndex-1],4,4);
+		free(collection[lastIndex]);
+		free(collection[lastIndex-1]);
 		//lastIndex decremented to store return pointer of combined blocks
 		lastIndex--;
 		lastBlockSize += 4 + 4;
-		void *ptr = myMalloc(lastBlockSize*sizeof(char),4,4);
+		void *ptr = malloc(lastBlockSize*sizeof(char));
 		collection[lastIndex] = ptr;
 	}
 	// free last block of size 4094 bytes
-	myFree(collection[lastIndex],4,4);
+	free(collection[lastIndex]);
 }
 void workloadF(){
 	void *collection[512];
@@ -203,7 +203,7 @@ void workloadF(){
 
 	for(i = 0; i < 512; i++)
 	{
-		ptr = myMalloc(4,4,4);
+		ptr = malloc(4);
 		if(ptr != NULL)
 		{
 			collection[i] = ptr;
@@ -211,13 +211,12 @@ void workloadF(){
 	}
 	for(i = 511; i >= 0; i--)
 	{
-		myFree(collection[i],4,4);
-		myFree(collection[i],4,4);
+		free(collection[i]);
+		free(collection[i]);
 	}
-	
 	for(i = 0; i < 512; i++)
 	{
-		ptr = myMalloc(4,4,4);
+		ptr = malloc(4);
 		if(ptr != NULL)
 		{
 			collection[i] = ptr;
@@ -225,7 +224,6 @@ void workloadF(){
 	}
 	for(i = 0; i < 512; i++)
 	{
-		myFree(collection[i],4,4);
-		myFree(collection[i],4,4);
+		free(collection[i]);
 	}
 }
