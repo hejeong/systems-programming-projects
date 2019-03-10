@@ -7,7 +7,9 @@ Next iteration, we should be freeing the 12 byte block, and a 4 byte block, then
 We wanted to include this workload test to confirm that we are efficiently allocating and freeing each requested block of memory without failure. 
 Workload F:
 This workload was designed the test the error catching of the malloc and free functions and the block merging capabilities of the free function. 
-First, 4 byte blocks were allocated to fill up the array, then the blocks were freed from the end of the array to the beginning of the array to
-test the program merging blocks that were freed with the blocks after them. Then the array was filled with 4 byte blocks once again however this 
-time the blocks were freed from the beginning of the array to the end in order to make sure the free functions merged the previous block with the
-newly freed one.
+First, 4 byte blocks were allocated to fill up the array, with there being an extra attempt to allocate 4 bytes with no more space left, triggering
+the no more space error, then the blocks were freed from the end of the array to the beginning of the array to test the program merging blocks that 
+were freed with the blocks after them. Afterwards the workload attempts to free an already freed pointer, then a pointer in the middle of a memory
+block, then a pointer to an address outside the global block of memory, and finally an int casted to an int pointer, triggering 4 errors. Then the 
+array was filled with 4 byte blocks once again however this time the blocks were freed from the beginning of the array to the end in order to make 
+sure the free functions merged the previous block with the newly freed one.

@@ -187,7 +187,7 @@ void workloadF(){
 	int i = 0;
 	void * ptr;
 
-	for(i = 0; i < 512; i++) //fills the memory with 4 byte blocks
+	for(i = 0; i <= 512; i++) //fills the memory with 4 byte blocks
 	{
 		ptr = malloc(4);
 		if(ptr != NULL)
@@ -198,8 +198,12 @@ void workloadF(){
 	for(i = 511; i >= 0; i--) //frees the blocks from the end to the beginning
 	{
 		free(collection[i]);
-		free(collection[i]);
 	}
+	free(collection[0]);
+	free(collection[6]);
+	free(collection[0]-10);
+	int x;
+	free((int*) x);
 	for(i = 0; i < 512; i++) //allocates 4 byte blocks again
 	{
 		ptr = malloc(4);
