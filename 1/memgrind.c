@@ -15,7 +15,7 @@ void workloadC();
 void workloadD();
 void workloadE();
 void workloadF();
-//void runTime();
+
 int main(int argc, char** argv){
 	struct timeval tvStart, tvAfter;
 	int j, a=0, b=0, c=0, d=0, e=0, f=0;
@@ -52,20 +52,6 @@ int main(int argc, char** argv){
 	printf("Mean runtime E: %ld microseconds\n", e/100);
 	printf("Mean runtime F: %ld microseconds\n", f/100);
 }
-/*	
-void runTime(){
-	struct timeval tvStart, tvAfter;
-	gettimeofday(&tvStart, NULL);
-	int i = 0, startTime, endTime, runTime;
-	while(i < 10000){
-		i++;
-	}
-	gettimeofday(&tvAfter, NULL);
-	startTime = tvStart.tv_sec*1000000L+tvStart.tv_usec;
-	endTime = tvAfter.tv_sec*1000000L+tvAfter.tv_usec;
-	runTime = endTime-startTime; 
-	printf("RUNTIME: %ld microseconds \n", runTime);
-}*/
 
 void workloadA(){
 	int i;
@@ -201,7 +187,7 @@ void workloadF(){
 	int i = 0;
 	void * ptr;
 
-	for(i = 0; i < 512; i++)
+	for(i = 0; i < 512; i++) //fills the memory with 4 byte blocks
 	{
 		ptr = malloc(4);
 		if(ptr != NULL)
@@ -209,12 +195,12 @@ void workloadF(){
 			collection[i] = ptr;
 		}
 	}
-	for(i = 511; i >= 0; i--)
+	for(i = 511; i >= 0; i--) //frees the blocks from the end to the beginning
 	{
 		free(collection[i]);
 		free(collection[i]);
 	}
-	for(i = 0; i < 512; i++)
+	for(i = 0; i < 512; i++) //allocates 4 byte blocks again
 	{
 		ptr = malloc(4);
 		if(ptr != NULL)
@@ -222,7 +208,7 @@ void workloadF(){
 			collection[i] = ptr;
 		}
 	}
-	for(i = 0; i < 512; i++)
+	for(i = 0; i < 512; i++) //frees the blocks from the beginning to the end
 	{
 		free(collection[i]);
 	}
