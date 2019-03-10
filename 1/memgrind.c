@@ -20,9 +20,12 @@ int main(int argc, char** argv){
 	struct timeval tvStart, tvAfter;
 	int j, a=0, b=0, c=0, d=0, e=0, f=0;
 	for(j=0; j<100; j++){
+		// grab start time
 		gettimeofday(&tvStart, NULL);
 		workloadA();
+		// grab end time
 		gettimeofday(&tvAfter, NULL);
+		// get total times in microseconds
 		a+=(tvAfter.tv_sec*1000000L+tvAfter.tv_usec)-(tvStart.tv_sec*1000000L+tvStart.tv_usec);
 		gettimeofday(&tvStart, NULL);
 		workloadB();
@@ -45,6 +48,7 @@ int main(int argc, char** argv){
 		gettimeofday(&tvAfter, NULL);
 		f+=(tvAfter.tv_sec*1000000L+tvAfter.tv_usec)-(tvStart.tv_sec*1000000L+tvStart.tv_usec);			
 	}
+	// print out mean runtimes for 100 loops
 	printf("Mean runtime A: %ld microseconds\n", a/100); 
 	printf("Mean runtime B: %ld microseconds\n", b/100); 
 	printf("Mean runtime C: %ld microseconds\n", c/100); 
@@ -55,9 +59,12 @@ int main(int argc, char** argv){
 
 void workloadA(){
 	int i;
+	// loop 150 times
 	for(i=0; i<150; i++){
+		// malloc 1 byte
 		void *ptr = malloc(1*sizeof(char)); 
 		if(ptr != NULL){
+			// free returned pointer 
 			free(ptr);
 		}
 	}
@@ -66,17 +73,26 @@ void workloadA(){
 void workloadB(){
 	int counter = 0, setsOfFifty = 0;
 	void *collection[50];
+	// keep doing until allocated and freed 150 bytes
 	while(setsOfFifty != 3){
+		// malloc 1 byte
 		void *ptr = malloc(1*sizeof(char));
 		if(ptr != NULL){
+			// store pointer in array
 			collection[counter] = ptr;
+			// increase malloc() count
 			counter++;
 		}
+		// every time we reach 50 allocated bytes at a time
+		// free all the pointers
 		if(counter == 50){
+			// free all pointers until all freed
 			while(counter > 0){
 				free(collection[counter-1]);
+				// decrease allocated count
 				counter--;
 			}
+			// increment (finished 1 set of 50); end at 3
 			setsOfFifty++;
 		}
 	}
@@ -126,19 +142,27 @@ void workloadC(){
 }
 
 void workloadD(){
+	// seed random number 
 	srand(time(0));
-	int bytesAllocated, timesMalloced = 0, elements = 0, mallocFlag, i=0;
+	int bytesAllocated, timesMalloced = 0, elements = 0, mallocFlag;
 	void *collection[61];
+	// keep doing until malloc()ed 50 times
 	while(timesMalloced < 50){
+		// random number: 1 - malloc, 0 - free
 		mallocFlag = rand() % 2;
-		i++;
 		if(mallocFlag == 1){
+			// random size from 1 to 64
 			int randomSize = rand()%64 + 1;
+			// allocate random sized byte
 			void *ptr = malloc(randomSize*sizeof(char));
 			if(ptr != NULL){
+				// store pointer
 				collection[elements] = ptr;
+				// increase number of elements in array
 				elements++;
+				// increase total number of malloc calls
 				timesMalloced++;
+				// keep track of total bytes allocated
 				bytesAllocated+= randomSize;
 			}
 		}else{
@@ -150,10 +174,10 @@ void workloadD(){
 			}
 		}
 	}
+	// free remaining pointers
 	while(elements > 0){
 		free(collection[elements-1]);
 		elements--;
-		i++;
 	}
 }
 void workloadE(){
