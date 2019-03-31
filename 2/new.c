@@ -116,23 +116,31 @@ struct treeNode * genBook (struct node * list){
 
 int publish(struct treeNode * book, char * code ){
 	if(book == NULL){
+		printf("no book to publish\n");
 		return 0;
 	}
-	if(code == "\0"){
-		printf("`\n");
+	int fd = open("./HuffmanCodebook", O_CREAT | O_RDWR | O_APPEND, S_IWUSR | S_IRUSR);
+	
+	if(strcmp(code, "\0") == 0){
+		write(fd, "`\n", 2);
 	}
 	if(book -> token != NULL){
-		printf("%s\t", code);
-		printf("%s\n",book->token);
+		write(fd, code, strlen(code));
+		write(fd, "\t", 1);
+		write(fd, book->token, strlen(book->token));
+		write(fd, "\n", 1);
 	}else{
-		char * left = malloc(strlen(code) + 1);
-		char * right = malloc(strlen(code) + 1);
+		char * left = malloc(strlen(code) + 2);
+		char * right = malloc(strlen(code) + 2);
 		strcpy(left, code);
 		strcpy(right, code);
 		strcat(left, "0");
 		strcat(right,"1");
 		publish(book->left, left);
 		publish(book->right, right);
+	}
+	if(strcmp(code, "\0") == 0){
+		write(fd, "\n", 1);
 	}
 	return 1;
 	
@@ -150,20 +158,19 @@ struct treeNode * genTree(char * bookPath){
 	read(fileDesc, stream, fileBytes);
 	stream[fileBytes] = '\0';
 	int i, size;
-	
-	for(i = 0; i < fileBytes; i++)
+	for(i = 2; i < fileBytes; i++)
     {
 		c = stream[i];
 		switch(con){
 			case 'C' :
 				if(c == '0'){
-					if(ptr->left = NULL){
+					if(ptr->left == NULL){
 						struct treeNode * temp = malloc(sizeof(struct treeNode));
 						ptr->left = temp;
 					}
 					ptr = ptr->left;
 				}else if(c == '1'){
-					if(ptr->right = NULL){
+					if(ptr->right == NULL){
 						struct treeNode * temp = malloc(sizeof(struct treeNode));
 						ptr->right = temp;
 					}
@@ -171,7 +178,7 @@ struct treeNode * genTree(char * bookPath){
 				}else if(c == '\t'){
 					int j;
 				
-					for(j = i + 1; j < fileBytes; j++){
+					for(j = (i + 1); j < fileBytes; j++){
 						if(stream[j] == '\n'){
 							break;
 						}
@@ -198,6 +205,7 @@ struct treeNode * genTree(char * bookPath){
 				}
 		}
     }
+	return head;
 }
 
 int decode(char * filePath, char * bookPath){
@@ -210,6 +218,10 @@ int decode(char * filePath, char * bookPath){
 	char* stream = malloc((fileBytes+1)*sizeof(char));
 	read(fileDesc, stream, fileBytes);
 	stream[fileBytes] = '\0';
+	char * fileDest = malloc(strlen(filePath) + 1);
+	strcpy(fileDest, filePath);
+	fileDest[strlen(fileDest) - 4] = '\0';
+	int fd = open(fileDest, O_CREAT | O_RDWR | O_TRUNC | O_APPEND, S_IWUSR | S_IRUSR);
 	
     
 	struct treeNode * head = malloc(sizeof(struct treeNode));
@@ -219,7 +231,7 @@ int decode(char * filePath, char * bookPath){
     {
 		c = stream[i];
 		if(ptr -> token != NULL){
-			printf("%s\n", ptr -> token);
+			write(fd, ptr->token, strlen(ptr->token));
 			ptr = head;
 		}
         if(c == '0'){
@@ -238,12 +250,41 @@ int decode(char * filePath, char * bookPath){
 			return 0;
 		}
     }
+	if(ptr -> token != NULL){
+			write(fd, ptr->token, strlen(ptr->token));
+	}
 	return 0;
 }
-int search(char * token){
-	printf("%s\n", token);
-	printf("one token\n");
-	return 0;
+char * search(char * token, char * code, struct treeNode * ptr){
+	if(token == NULL){
+		printf("invalid token to search for\n");
+		return NULL;
+	}
+	if(ptr->token != NULL){
+		if(strcmp(ptr->token, token) == 0){
+			return code;
+		}else {
+			return NULL;
+		}
+	}else{
+		char * left = malloc(strlen(code) + 2);
+		char * right = malloc(strlen(code) + 2);
+		char * retLeft;
+		char * retRight;
+		char * ret;
+		strcpy(left, code);
+		strcpy(right, code);
+		strcat(left, "0");
+		strcat(right,"1");
+		retLeft = search(token, left, ptr->left);
+		retRight = search(token, right, ptr->right);
+		if(retLeft != NULL){
+			return retLeft;
+		}else{
+			return retRight;
+		}
+		
+	}
 }
 
 int compress(char * filePath, char * bookPath){
@@ -252,22 +293,31 @@ int compress(char * filePath, char * bookPath){
 	char* str = malloc((fileBytes+1)*sizeof(char));
 	read(fileDesc, str, fileBytes);
 	str[fileBytes] = '\0';
-	
 	struct treeNode * tree = genTree(bookPath);
 	char * top = str;
-	strcpy(str, filePath);
 	char *nextString;
 	char *startToken = str;
 	int i;
 	
-	for(i = 0; i < strlen(filePath); i++){
+	char * fileDest = malloc(strlen(filePath)+5);
+	strcpy(fileDest, filePath);
+	strcat(fileDest, ".hcz");
+	
+	int fd = open(fileDest, O_CREAT | O_RDWR | O_TRUNC | O_APPEND, S_IWUSR | S_IRUSR);
+	int size = strlen(str);
+	for(i = 0; i < size; i++){
+		printf("%d of %d\n", i, size);
+		printf("%s\n", str);
 		if((*str >= 7 && *str <= 13) || (*str == 26) || (*str == 27) || (*str == 0) || (*str == ' ')){
-			char special[2] = "\0";
+			char special[2];
 			special[0] = *str;
+			special[1] = '\0';
 			nextString = str + 1;
 			*str = '\0';
-			search(startToken, tree);
-			search(special, tree);
+			char * token1 = search(startToken, "\0", tree);
+			write(fd, token1, strlen(token1));
+			char * token2 = search(special, "\0", tree);
+			write(fd, token2, strlen(token2));
 			str = nextString;
 			startToken = nextString;
 			continue;
@@ -295,7 +345,7 @@ int main(int argc, char* argv[]){
 	node5->token = "haha5";
 	node5->freq = 5;
 	struct node * node6 = malloc(sizeof(struct node));
-	node6->token = "haha6";
+	node6->token = " ";
 	node6->freq = 6;
 	struct node * node7 = malloc(sizeof(struct node));
 	node7->token = "haha7";
@@ -308,14 +358,9 @@ int main(int argc, char* argv[]){
 	node5->next = node3;
 	node6->next = node4;
 	publish(genBook(node1), "\0");
+	decode("./testComp.txt.hcz","./HuffmanCodebook");
 	
-	printf("\n\n\n\n\n\n");
+	//printf("\n\n\n\n\n\n");
 	
-	
-	
-	
-	char * test = "da";
-	printf("%s\n", test);
-	printf("%d\n", test[2]);
 	return 0;
 }  
