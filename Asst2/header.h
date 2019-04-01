@@ -32,6 +32,17 @@ int getFileSizeInBytes(const char* path){
 	return size;
 }
 
+int iterate(struct treeNode * ptr){
+	if(ptr == NULL){
+		return 0;
+	}
+	if(ptr->token != NULL){
+		printf("%s\n", ptr->token);
+	}
+	iterate(ptr->left);
+	iterate(ptr->right);
+}
+
 struct treeNode * genBook (struct node * list){
 	
 	if(list == NULL){
@@ -195,6 +206,8 @@ struct treeNode * genTree(char * bookPath){
 	char c;
 	char con = 'C';
 	struct treeNode * head = malloc(sizeof(struct treeNode));
+	head->left = NULL;
+	head->right = NULL;
 	head->token = NULL;
 	struct treeNode * ptr = head;
 	int fileBytes = getFileSizeInBytes(bookPath);
@@ -212,6 +225,7 @@ struct treeNode * genTree(char * bookPath){
 		printf("invalid Huffman Codebook\n");
 		return NULL;
 	}
+	struct treeNode * temp;
 	for(i = 2; i < fileBytes; i++)
     {
 		c = stream[i];
@@ -219,14 +233,14 @@ struct treeNode * genTree(char * bookPath){
 			case 'C' :
 				if(c == '0'){
 					if(ptr->left == NULL){
-						struct treeNode * temp = malloc(sizeof(struct treeNode));
+						temp = malloc(sizeof(struct treeNode));
 						temp->token = NULL;
 						ptr->left = temp;
 					}
 					ptr = ptr->left;
 				}else if(c == '1'){
 					if(ptr->right == NULL){
-						struct treeNode * temp = malloc(sizeof(struct treeNode));
+						temp = malloc(sizeof(struct treeNode));
 						temp->token = NULL;
 						ptr->right = temp;
 					}
@@ -240,7 +254,7 @@ struct treeNode * genTree(char * bookPath){
 						}
 						size++;
 					}
-					token = malloc((size + 1) * sizeof(char));
+					token = malloc((size + 2) * sizeof(char));
 					token[0] = '\0';
 					con = 'E';
 				}else if(c == '\n'){
@@ -282,8 +296,10 @@ struct treeNode * genTree(char * bookPath){
 				con = 'T';
 			case 'T' :
 				if(c == '\n'){
-					ptr->token = malloc((strlen(token)+1)*sizeof(char));
+					ptr->token = malloc((strlen(token)+2)*sizeof(char));
 					strcpy(ptr->token,token);
+					strcat(ptr->token,"\0");
+					printf("added %s\n", ptr->token);
 					ptr->left = NULL;
 					ptr->right = NULL;
 					size = 0;
@@ -371,7 +387,6 @@ char * search(char * token, char * code, struct treeNode * ptr){
 			return code;
 		}else {
 			//printf("%s does not match with %s\n", token, ptr->token);
-			free(code);
 			return NULL;
 		}
 	}else{
@@ -407,6 +422,7 @@ int compress(char * filePath, char * bookPath){
 	if(tree == NULL){
 		return 0;
 	}
+	iterate(tree);
 	
 	char * fileDest = malloc(strlen(filePath)+5);
 	strcpy(fileDest, filePath);
@@ -443,6 +459,5 @@ int compress(char * filePath, char * bookPath){
 		}
 		str++;
 	}
-	free(top);
 	return 0;
 }

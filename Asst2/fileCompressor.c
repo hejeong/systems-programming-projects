@@ -146,7 +146,7 @@ struct node* traverse(char* currentDir, struct node* head, char action, char * h
 		char *fileType;
 		if(typeInt == 0){
 			fileType = "Directory";
-			printf("%s\n   >> %s\n", path, fileType); 
+			//printf("%s\n   >> %s\n", path, fileType); 
 			// append a '/' character to the end of current path, then traverse into nested directories
 			char* newPath = (char*)malloc((strlen(path)+2)*sizeof(char));
 			strcpy(newPath, path);
@@ -156,9 +156,10 @@ struct node* traverse(char* currentDir, struct node* head, char action, char * h
 			continue;
 		}else if(typeInt == 1){
 			fileType = "Regular File";
-			printf("%s\n   >> %s\n", path, fileType); 
+			//printf("%s\n   >> %s\n", path, fileType); 
 			if(action == 'b'){
 				top = tokenizeFile(path, top);
+				printTokens(top);
 				publish(genBook(top), "\0", 0);
 			}else if(action == 'c'){
 				compress(path, huffmanCodebookPath);
@@ -169,7 +170,7 @@ struct node* traverse(char* currentDir, struct node* head, char action, char * h
 		}else {
 			fileType = "Neither";
 		}
-		printf("%s\n   >> %s\n", path, fileType); 
+		//printf("%s\n   >> %s\n", path, fileType); 
 		free(path);
 	}
 	// close the current directory
