@@ -162,7 +162,11 @@ int publish(struct treeNode * book, char * code, int fd){
 		write(fd, "`\n", 2);
 	}
 	if(book -> token != NULL){
-		write(fd, code, strlen(code));
+		if(strcmp(code, "\0") == 0){
+			write(fd, "0", 1);
+		}else{
+			write(fd, code, strlen(code));
+		}
 		write(fd, "\t", 1);
 		char * token = normalize(book->token);
 		write(fd, token, strlen(token));
@@ -308,10 +312,9 @@ int decode(char * filePath, char * bookPath){
 	fileDest[strlen(fileDest) - 4] = '\0';
 	int fd = open(fileDest, O_CREAT | O_RDWR | O_TRUNC, S_IWUSR | S_IRUSR);
 	
-    
+    stream[fileBytes] = '\0';
 	struct treeNode * head = genTree(bookPath);
 	if(head == NULL){
-		printf("invalid Huffman Codebook\n");
 		return 0;
 	}
 	struct treeNode * ptr = head;
@@ -404,7 +407,6 @@ int compress(char * filePath, char * bookPath){
 	char *startToken = str;
 	int i;
 	if(tree == NULL){
-		printf("invalid Huffman Codebook\n");
 		return 0;
 	}
 	
@@ -416,6 +418,7 @@ int compress(char * filePath, char * bookPath){
 	if(fileBytes == 0){
 		return 0;
 	}
+	str[fileBytes] = '\0';
 	int size = strlen(str);
 	for(i = 0; i < size; i++){
 		if((*str >= 7 && *str <= 13) || (*str == 26) || (*str == 27) || (*str == 0) || (*str == ' ')){
@@ -434,6 +437,8 @@ int compress(char * filePath, char * bookPath){
 			startToken = nextString;
 			continue;
 		}else if(i == (size)-1){
+			str++;
+			*str = '\0';
 			char * token1 = search(startToken, "\0", tree);
 			write(fd, token1, strlen(token1));
 			break;
