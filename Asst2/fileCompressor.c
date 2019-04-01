@@ -163,7 +163,7 @@ int main(int argc, char* argv[]){
 	head = traverse(argv[1], head);
 	printf("-------Close Root Directory-------\n\n");
 	
-	publish(genBook(head), "\0");
+	publish(genBook(head),"\0");
 	/*printf("Command Line Argument: %s\n",argv[1]);
 	if(strcmp(argv[1], "-b") == 0){
 		printf("I'M GOING TO BUILD A CODEBOOK\n");

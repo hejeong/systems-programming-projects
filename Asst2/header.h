@@ -52,11 +52,15 @@ struct treeNode * genBook (struct node * list){
 	for(i = 0; i < count; i++){
 		arr[i] = malloc(sizeof(struct treeNode));
 		arr[i] -> token = malloc(strlen(ptr->token));
+		arr[i] -> left = NULL;
+		arr[i] -> right = NULL;
 		strcpy(arr[i] -> token, ptr -> token);
 		arr[i] -> freq = ptr -> freq;
 		ptr = ptr -> next;
 	}
-	
+	for(i = 0; i < count; i++){
+		printf("%d\n", *(arr[i]->token));
+	}
 	if(count == 1){
 		return arr[0];
 	}
@@ -78,7 +82,7 @@ struct treeNode * genBook (struct node * list){
 		}
 		
 		if(amt < 2){
-			return arr[first];
+			break;
 		}
 		//finds the two lowest treeNodes
 		for(i = 0; i < count; i++){
@@ -97,6 +101,7 @@ struct treeNode * genBook (struct node * list){
 		}
 		
 		struct treeNode * combine = malloc(sizeof(struct treeNode));
+		combine->token = NULL;
 		combine->freq = arr[first]->freq + arr[second]->freq;
 		combine->left = arr[first];
 		combine->right = arr[second];
@@ -120,8 +125,9 @@ char * normalize(char * token){
 	}
 	if((*token >= 7 && *token <= 13) || (*token == 26) || (*token == 27) || (*token == 0)){
 		char c = *token;
-		char * ret = malloc(2);
+		char * ret = malloc(3);
 		ret[0] = '`';
+		ret[2] = '\0';
 		switch(c){
 			case '\a':
 				ret[1] = 'a';
@@ -395,5 +401,17 @@ int compress(char * filePath, char * bookPath){
 		str++;
 	}
 	free(top);
+	return 0;
+}
+
+int iterate(struct treeNode * tree){
+	if(tree == NULL){
+		return 0;
+	}
+	if(tree->token != NULL){
+		printf("%d\n", (*tree->token));
+	}
+	iterate(tree->left);
+	iterate(tree->right);
 	return 0;
 }
