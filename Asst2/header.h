@@ -190,6 +190,7 @@ struct treeNode * genTree(char * bookPath){
 	char c;
 	char con = 'C';
 	struct treeNode * head = malloc(sizeof(struct treeNode));
+	head->token = NULL;
 	struct treeNode * ptr = head;
 	int fileBytes = getFileSizeInBytes(bookPath);
 	int fileDesc = open(bookPath, O_RDONLY);
@@ -206,14 +207,14 @@ struct treeNode * genTree(char * bookPath){
 				if(c == '0'){
 					if(ptr->left == NULL){
 						struct treeNode * temp = malloc(sizeof(struct treeNode));
-						ptr->token = NULL;
+						temp->token = NULL;
 						ptr->left = temp;
 					}
 					ptr = ptr->left;
 				}else if(c == '1'){
 					if(ptr->right == NULL){
 						struct treeNode * temp = malloc(sizeof(struct treeNode));
-						ptr->token = NULL;
+						temp->token = NULL;
 						ptr->right = temp;
 					}
 					ptr = ptr->right;
@@ -227,7 +228,7 @@ struct treeNode * genTree(char * bookPath){
 						size++;
 					}
 					token = malloc((size + 1) * sizeof(char));
-					strcpy(token,"\0");
+					token[0] = '\0';
 					con = 'E';
 				}else if(c == '\n'){
 					return head;
@@ -265,10 +266,14 @@ struct treeNode * genTree(char * bookPath){
 				con = 'T';
 			case 'T' :
 				if(c == '\n'){
-					ptr->token = token;
+					ptr->token = malloc((size+3)*sizeof(char));
+					strcpy(ptr->token,token);
+					ptr->left = NULL;
+					ptr->right = NULL;
 					size = 0;
 					ptr = head;
 					con = 'C';
+					
 				}else {
 					char ch[2];
 					ch[0] = c;
@@ -287,17 +292,16 @@ int decode(char * filePath, char * bookPath){
 
 	int fileBytes = getFileSizeInBytes(filePath);
 	int fileDesc = open(filePath, O_RDONLY);
-	char* stream = malloc((fileBytes+1)*sizeof(char));
+	char* stream = malloc((fileBytes)*sizeof(char));
 	read(fileDesc, stream, fileBytes);
-	stream[fileBytes] = '\0';
 	char * fileDest = malloc(strlen(filePath) + 1);
 	strcpy(fileDest, filePath);
 	fileDest[strlen(fileDest) - 4] = '\0';
-	int fd = open(fileDest, O_CREAT | O_RDWR | O_TRUNC | O_APPEND, S_IWUSR | S_IRUSR);
+	int fd = open(fileDest, O_CREAT | O_RDWR | O_TRUNC, S_IWUSR | S_IRUSR);
 	
     
-	struct treeNode * head = malloc(sizeof(struct treeNode));
-	head = genTree(bookPath);
+	struct treeNode * head = genTree(bookPath);
+	iterate(head);
 	struct treeNode * ptr = head;
     for(i = 0; i < fileBytes; i++)
     {
@@ -332,10 +336,15 @@ char * search(char * token, char * code, struct treeNode * ptr){
 		printf("invalid token to search for\n");
 		return NULL;
 	}
+	//printf("searching for %s\n", token);
+	if(ptr == NULL){
+		return NULL;
+	}
 	if(ptr->token != NULL){
 		if(strcmp(ptr->token, token) == 0){
 			return code;
 		}else {
+			//printf("%s does not match with %s\n", token, ptr->token);
 			return NULL;
 		}
 	}else{
@@ -369,12 +378,13 @@ int compress(char * filePath, char * bookPath){
 	char *nextString;
 	char *startToken = str;
 	int i;
+	iterate(tree);
 	
 	char * fileDest = malloc(strlen(filePath)+5);
 	strcpy(fileDest, filePath);
 	strcat(fileDest, ".hcz");
 	
-	int fd = open(fileDest, O_CREAT | O_RDWR | O_TRUNC | O_APPEND, S_IWUSR | S_IRUSR);
+	int fd = open(fileDest, O_CREAT | O_RDWR | O_TRUNC, S_IWUSR | S_IRUSR);
 	int size = strlen(str);
 	for(i = 0; i < size; i++){
 		if((*str >= 7 && *str <= 13) || (*str == 26) || (*str == 27) || (*str == 0) || (*str == ' ')){
@@ -408,7 +418,8 @@ int iterate(struct treeNode * tree){
 		return 0;
 	}
 	if(tree->token != NULL){
-		printf("%s\n", tree->token);
+		printf("%s\n", (tree->token));
+		return 0;
 	}
 	iterate(tree->left);
 	iterate(tree->right);
