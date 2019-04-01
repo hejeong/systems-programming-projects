@@ -364,7 +364,7 @@ char * search(char * token, char * code, struct treeNode * ptr){
 				char * ret = malloc(strlen(code) + 2);
 				strcpy(ret, code);
 				strcat(ret, "0");
-				return 
+				return ret;
 			}				
 			return code;
 		}else {
