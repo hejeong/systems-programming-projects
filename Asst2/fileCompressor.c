@@ -159,7 +159,6 @@ struct node* traverse(char* currentDir, struct node* head, char action, char * h
 			printf("%s\n   >> %s\n", path, fileType); 
 			if(action == 'b'){
 				top = tokenizeFile(path, top);
-				printTokens(top);
 				publish(genBook(top), "\0", 0);
 			}else if(action == 'c'){
 				compress(path, huffmanCodebookPath);

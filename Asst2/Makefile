@@ -1,5 +1,5 @@
 all: fileCompressor.c 
-	gcc fileCompressor.c -o fileCompressor
+	gcc -O fileCompressor.c -o fileCompressor
 	
 clean:
 	rm -rf fileCompressor
