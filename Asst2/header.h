@@ -58,7 +58,9 @@ struct treeNode * genBook (struct node * list){
 		arr[i] -> freq = ptr -> freq;
 		ptr = ptr -> next;
 	}
-
+	for(i = 0; i < count; i++){
+		printf("%d\n", *(arr[i]->token));
+	}
 	if(count == 1){
 		return arr[0];
 	}
@@ -207,12 +209,14 @@ struct treeNode * genTree(char * bookPath){
 				if(c == '0'){
 					if(ptr->left == NULL){
 						struct treeNode * temp = malloc(sizeof(struct treeNode));
+						ptr->token = NULL;
 						ptr->left = temp;
 					}
 					ptr = ptr->left;
 				}else if(c == '1'){
 					if(ptr->right == NULL){
 						struct treeNode * temp = malloc(sizeof(struct treeNode));
+						ptr->token = NULL;
 						ptr->right = temp;
 					}
 					ptr = ptr->right;
@@ -407,7 +411,7 @@ int iterate(struct treeNode * tree){
 		return 0;
 	}
 	if(tree->token != NULL){
-		printf("%d\n", (*tree->token));
+		printf("%s\n", tree->token);
 	}
 	iterate(tree->left);
 	iterate(tree->right);
