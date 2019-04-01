@@ -186,7 +186,6 @@ int publish(struct treeNode * book, char * code, int fd){
 	}
 	if(strcmp(code, "\0") == 0){
 		write(fd, "\n", 1);
-		close(fd);
 	}
 	return 1;
 	
@@ -209,7 +208,6 @@ struct treeNode * genTree(char * bookPath){
 	read(fileDesc, stream, fileBytes);
 	stream[fileBytes] = '\0';
 	int i, size;
-	close(fileDesc);
 	if(strlen(stream) < 4){
 		printf("invalid Huffman Codebook\n");
 		return NULL;
@@ -260,6 +258,9 @@ struct treeNode * genTree(char * bookPath){
 						case 'b':
 							strcat(token, "\b");
 							break;
+						case 't':
+							strcat(token, "\t");
+							break;
 						case 'n':
 							strcat(token, "\n");
 							break;
@@ -309,7 +310,6 @@ int decode(char * filePath, char * bookPath){
 	int fileDesc = open(filePath, O_RDONLY);
 	char* stream = malloc((fileBytes)*sizeof(char));
 	read(fileDesc, stream, fileBytes);
-	close(fileDesc);
 	char * fileDest = malloc(strlen(filePath) + 1);
 	strcpy(fileDest, filePath);
 	fileDest[strlen(fileDest) - 4] = '\0';
@@ -331,27 +331,23 @@ int decode(char * filePath, char * bookPath){
         if(c == '0'){
 			if(ptr->left == NULL){
 				printf("invalid code\n");
-				close(fd);
 				return 0;
 			}
 			ptr = ptr -> left;
 		}else if(c == '1'){
 			if(ptr->right == NULL){
 				printf("invalid code\n");
-				close(fd);
 				return 0;
 			}
 			ptr = ptr -> right;
 		}else{
 			printf("invalid code\n");
-			close(fd);
 			return 0;
 		}
     }
 	if(ptr -> token != NULL){
 			write(fd, ptr->token, strlen(ptr->token));
 	}
-	close(fd);
 	return 0;
 }
 char * search(char * token, char * code, struct treeNode * ptr){
@@ -403,7 +399,6 @@ int compress(char * filePath, char * bookPath){
 	int fileDesc = open(filePath, O_RDONLY);
 	char* str = malloc((fileBytes)*sizeof(char));
 	read(fileDesc, str, fileBytes);
-	close(fileDesc);
 	struct treeNode * tree = genTree(bookPath);
 	char * top = str;
 	char *nextString;
@@ -448,7 +443,6 @@ int compress(char * filePath, char * bookPath){
 		}
 		str++;
 	}
-	close(fd);
 	free(top);
 	return 0;
 }
