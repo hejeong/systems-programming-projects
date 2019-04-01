@@ -33,7 +33,6 @@ void printTokens(struct node* head){
 
 struct node* addToken(char* token, struct node* head){
 	struct node* current = head;
-	
 	if(head != NULL){
 		while(current != NULL){
 			if(strcmp(current->token, token) == 0){
@@ -78,11 +77,16 @@ struct node* tokenize(char* string, int totalBytes, struct node* head){
 			special[0] = *str;
 			nextString = str + 1;
 			*str = '\0';
-			head = addToken(startToken, head);
+			if(strlen(startToken) != 0){
+				head = addToken(startToken, head);
+			}
 			head = addToken(special, head);
 			str = nextString;
 			startToken = nextString;
 			totalBytes--;
+			if(totalBytes == 0){
+				break;
+			}
 			continue;
 		}
 		totalBytes--;
@@ -162,8 +166,9 @@ int main(int argc, char* argv[]){
 	printf("\n-------Open Root Directory-------\n");
 	head = traverse(argv[1], head);
 	printf("-------Close Root Directory-------\n\n");
-	
-	publish(genBook(head),"\0");
+	//printTokens(head);
+	publish(genBook(head), "\0");
+	compress("./SecondDir/a.txt", "./HuffmanCodebook");
 	/*printf("Command Line Argument: %s\n",argv[1]);
 	if(strcmp(argv[1], "-b") == 0){
 		printf("I'M GOING TO BUILD A CODEBOOK\n");
