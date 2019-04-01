@@ -164,11 +164,11 @@ struct node* traverse(char* currentDir, struct node* head){
 int main(int argc, char* argv[]){
 	struct node* head;
 	printf("\n-------Open Root Directory-------\n");
-	//head = traverse(argv[1], head);
+	head = traverse(argv[1], head);
 	printf("-------Close Root Directory-------\n\n");
 	//printTokens(head);
-	//publish(genBook(head), "\0");
-	//compress("./SecondDir/a.txt", "./HuffmanCodebook");
+	publish(genBook(head), "\0", 0);
+	compress("./SecondDir/a.txt", "./HuffmanCodebook");
 	decode("./SecondDir/a.txt.hcz", "./HuffmanCodebook");
 	/*printf("Command Line Argument: %s\n",argv[1]);
 	if(strcmp(argv[1], "-b") == 0){
