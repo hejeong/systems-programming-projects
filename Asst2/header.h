@@ -124,6 +124,9 @@ char * normalize(char * token){
 			case '\b':
 				ret[1] = 'b';
 				break;
+			case '\t':
+				ret[1] = 't';
+				break;
 			case '\n':
 				ret[1] = 'n';
 				break;

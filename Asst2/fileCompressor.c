@@ -25,7 +25,7 @@ int regularFileOrDirectory(const char* path){
 void printTokens(struct node* head){
 	struct node* current = head;
 	while(current != NULL){
-		printf("[%s]  -  %d\n", current->token, current->freq);
+		printf("[%d]  -  %d\n", *(current->token), current->freq);
 		current = current->next;
 	}
 	return;
@@ -169,7 +169,7 @@ int main(int argc, char* argv[]){
 	printf("\n-------Open Root Directory-------\n");
 	head = traverse(argv[1], head);
 	printf("-------Close Root Directory-------\n\n");
-	//printTokens(head);
+	printTokens(head);
 	publish(genBook(head), "\0", 0);
 	compress("./SecondDir/a.txt", "./HuffmanCodebook");
 	decode("./SecondDir/a.txt.hcz", "./HuffmanCodebook");
