@@ -118,7 +118,36 @@ char * normalize(char * token){
 	if(strlen(token) != 1){
 		return token;
 	}
-	
+	if((*token >= 7 && *token <= 13) || (*token == 26) || (*token == 27) || (*token == 0)){
+		char c = *token;
+		char * ret = malloc(2);
+		ret[0] = '`';
+		switch(c){
+			case '\a':
+				ret[1] = 'a';
+				break;
+			case '\b':
+				ret[1] = 'b';
+				break;
+			case '\n':
+				ret[1] = 'n';
+				break;
+			case '\v':
+				ret[1] = 'v';
+				break;
+			case '\f':
+				ret[1] = 'f';
+				break;
+			case '\r':
+				ret[1] = 'r';
+				break;
+			case '\0':
+				ret[1] = '0';
+				break;
+		}
+		return ret;
+	}
+	return token;
 }
 
 int publish(struct treeNode * book, char * code ){
@@ -194,11 +223,41 @@ struct treeNode * genTree(char * bookPath){
 					}
 					token = malloc((size + 1) * sizeof(char));
 					strcpy(token,"\0");
-					con = 'T';
+					con = 'E';
 				}else if(c == '\n'){
 					return head;
 				}
 				break;
+			case 'E' :
+				if(c == '`'){
+					i++;
+					c = stream[i];
+					switch(c){
+						case 'a':
+							strcat(token, "\a");
+							break;
+						case 'b':
+							strcat(token, "\b");
+							break;
+						case 'n':
+							strcat(token, "\n");
+							break;
+						case 'v':
+							strcat(token, "\v");
+							break;
+						case 'f':
+							strcat(token, "\f");
+							break;
+						case 'r':
+							strcat(token, "\r");
+							break;
+						case '0':
+							strcat(token, "\0");
+							break;
+					}
+					break;
+				}
+				con = 'T';
 			case 'T' :
 				if(c == '\n'){
 					ptr->token = token;
@@ -356,7 +415,7 @@ int main(int argc, char* argv[]){
 	node6->token = " ";
 	node6->freq = 6;
 	struct node * node7 = malloc(sizeof(struct node));
-	node7->token = "haha7";
+	node7->token = "\n";
 	node7->freq = 7;
 	
 	node1->next = node2;
@@ -365,13 +424,11 @@ int main(int argc, char* argv[]){
 	node4->next = node7;
 	node5->next = node3;
 	node6->next = node4;
-	//publish(genBook(node1), "\0");
-	//decode("./testComp.txt.hcz","./HuffmanCodebook");
-	char char1 = '\n';
-	char char2 = 92;
-	printf("%c%c\n",char1, char2);
+	publish(genBook(node1), "\0");
+	decode("./testComp.txt.hcz","./HuffmanCodebook");
 	
 	//printf("\n\n\n\n\n\n");
+	
 	
 	return 0;
 }  
