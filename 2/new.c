@@ -380,8 +380,10 @@ int compress(char * filePath, char * bookPath){
 			special[1] = '\0';
 			nextString = str + 1;
 			*str = '\0';
-			char * token1 = search(startToken, "\0", tree);
-			write(fd, token1, strlen(token1));
+			if(strlen(startToken) != 0){
+				char * token1 = search(startToken, "\0", tree);
+				write(fd, token1, strlen(token1));
+			}
 			char * token2 = search(special, "\0", tree);
 			write(fd, token2, strlen(token2));
 			str = nextString;
