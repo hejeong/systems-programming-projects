@@ -58,9 +58,6 @@ struct treeNode * genBook (struct node * list){
 		arr[i] -> freq = ptr -> freq;
 		ptr = ptr -> next;
 	}
-	for(i = 0; i < count; i++){
-		printf("%d\n", *(arr[i]->token));
-	}
 	if(count == 1){
 		return arr[0];
 	}
