@@ -6,12 +6,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-
-struct node{
-	char * token;
-	int freq;
-	struct node * next;
-};
+#include "header.h"
 
 int regularFileOrDirectory(const char* path){
 	struct stat fileStat;
@@ -25,13 +20,6 @@ int regularFileOrDirectory(const char* path){
 	}else if(S_ISREG(fileStat.st_mode)){
 		return 1;
 	}
-}
-
-int getFileSizeInBytes(const char* path){
-	struct stat fileStat;
-	stat(path, &fileStat);
-	int size = fileStat.st_size;
-	return size;
 }
 
 void printTokens(struct node* head){
@@ -175,10 +163,7 @@ int main(int argc, char* argv[]){
 	head = traverse(argv[1], head);
 	printf("-------Close Root Directory-------\n\n");
 	
-	printf("-------Print Tokens--------\n");
-	printTokens(head);
-	printf("-------COMPLETED--------\n\n");
-	return 0;
+	publish(genBook(head), "\0");
 	/*printf("Command Line Argument: %s\n",argv[1]);
 	if(strcmp(argv[1], "-b") == 0){
 		printf("I'M GOING TO BUILD A CODEBOOK\n");
