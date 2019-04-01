@@ -61,6 +61,9 @@ struct node* addToken(char* token, struct node* head){
 }
 
 struct node* tokenize(char* string, int totalBytes, struct node* head){
+	if(totalBytes == 0){
+		return head;
+	}
 	char * str = (char *)malloc((strlen(string)+1)*sizeof(char));
 	str[strlen(string)] = '\0';
 	char * top = str;
