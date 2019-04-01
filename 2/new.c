@@ -114,7 +114,8 @@ struct treeNode * genBook (struct node * list){
 	return book;
 }
 
-int publish(struct treeNode * book, char * code ){
+int publish(struct node * list, char * code ){
+	struct treeNode * book = genBook(list);
 	if(book == NULL){
 		printf("no book to publish\n");
 		return 0;
@@ -328,7 +329,7 @@ int compress(char * filePath, char * bookPath){
 	return 0;
 }
 
-int main(int argc, char* argv[]){
+/*int main(int argc, char* argv[]){
 	struct node * node1 = malloc(sizeof(struct node));
 	node1->token = "haha";
 	node1->freq = 1;
@@ -357,10 +358,10 @@ int main(int argc, char* argv[]){
 	node4->next = node7;
 	node5->next = node3;
 	node6->next = node4;
-	publish(genBook(node1), "\0");
+	publish(node1, "\0");
 	decode("./testComp.txt.hcz","./HuffmanCodebook");
 	
 	//printf("\n\n\n\n\n\n");
 	
 	return 0;
-}  
+}  */
