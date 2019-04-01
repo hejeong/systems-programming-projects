@@ -327,6 +327,7 @@ char * search(char * token, char * code, struct treeNode * ptr){
 		printf("invalid token to search for\n");
 		return NULL;
 	}
+	printf("searching for %s\n", token);
 	if(ptr->token != NULL){
 		if(strcmp(ptr->token, token) == 0){
 			return code;
@@ -357,9 +358,8 @@ char * search(char * token, char * code, struct treeNode * ptr){
 int compress(char * filePath, char * bookPath){
 	int fileBytes = getFileSizeInBytes(filePath);
 	int fileDesc = open(filePath, O_RDONLY);
-	char* str = malloc((fileBytes+1)*sizeof(char));
+	char* str = malloc((fileBytes)*sizeof(char));
 	read(fileDesc, str, fileBytes);
-	str[fileBytes] = '\0';
 	struct treeNode * tree = genTree(bookPath);
 	char * top = str;
 	char *nextString;
@@ -372,9 +372,8 @@ int compress(char * filePath, char * bookPath){
 	
 	int fd = open(fileDest, O_CREAT | O_RDWR | O_TRUNC | O_APPEND, S_IWUSR | S_IRUSR);
 	int size = strlen(str);
+	printf("%d\n", str[size-2]);
 	for(i = 0; i < size; i++){
-		printf("%d of %d\n", i, size);
-		printf("%s\n", str);
 		if((*str >= 7 && *str <= 13) || (*str == 26) || (*str == 27) || (*str == 0) || (*str == ' ')){
 			char special[2];
 			special[0] = *str;
@@ -388,6 +387,10 @@ int compress(char * filePath, char * bookPath){
 			str = nextString;
 			startToken = nextString;
 			continue;
+		}else if(i == (size)-1){
+			char * token1 = search(startToken, "\0", tree);
+			write(fd, token1, strlen(token1));
+			break;
 		}
 		str++;
 	}
@@ -425,6 +428,7 @@ int main(int argc, char* argv[]){
 	node5->next = node3;
 	node6->next = node4;
 	publish(genBook(node1), "\0");
+	compress("./testComp.txt", "./HuffmanCodebook");
 	decode("./testComp.txt.hcz","./HuffmanCodebook");
 	
 	//printf("\n\n\n\n\n\n");
