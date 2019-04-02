@@ -66,11 +66,6 @@ struct treeNode * genBook (struct node * list){
 		int amt = 0;
 		int first = -1;
 		int second = -1;
-		//checks to see if there are at least two leafs left to combine
-		if(amt < 2){
-			return arr[first];
-			break;
-		}
 		//finds initial starting point for "pointers" to look for two lowest nodes
 		for(i = 0; i < count; i++){
 			if(arr[i] != NULL){
@@ -82,7 +77,11 @@ struct treeNode * genBook (struct node * list){
 				}
 			}
 		}
-		
+		//checks to see if there are at least two leafs left to combine
+		if(amt < 2){
+			return arr[first];
+			break;
+		}
 		//finds the two lowest treeNodes
 		for(i = 0; i < count; i++){
 			if(arr[i] != NULL){
@@ -417,7 +416,6 @@ int compress(char * filePath, char * bookPath){
 	if(tree == NULL){
 		return 0;
 	}
-	iterate(tree);
 	
 	char * fileDest = malloc(strlen(filePath)+5);
 	strcpy(fileDest, filePath);
