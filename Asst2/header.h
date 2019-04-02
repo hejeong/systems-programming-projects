@@ -299,7 +299,6 @@ struct treeNode * genTree(char * bookPath){
 					ptr->token = malloc((strlen(token)+2)*sizeof(char));
 					strcpy(ptr->token,token);
 					strcat(ptr->token,"\0");
-					printf("added %s\n", ptr->token);
 					ptr->left = NULL;
 					ptr->right = NULL;
 					size = 0;

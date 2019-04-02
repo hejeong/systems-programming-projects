@@ -22,15 +22,6 @@ int regularFileOrDirectory(const char* path){
 	}
 }
 
-void printTokens(struct node* head){
-	struct node* current = head;
-	while(current != NULL){
-		printf("[%s]  -  %d\n", current->token, current->freq);
-		current = current->next;
-	}
-	return;
-}
-
 struct node* addToken(char* token, struct node* head){
 	struct node* current = head;
 	if(head != NULL){
@@ -102,7 +93,6 @@ struct node* tokenize(char* string, int totalBytes, struct node* head){
 struct node * tokenizeFile(char * path, struct node* head){
 	struct node* top = head;
 	int fileBytes = getFileSizeInBytes(path);
-	printf("   >> File Size: %d bytes\n", fileBytes);
 	int fileDesc = open(path, O_RDONLY);
 	char* stream = malloc((fileBytes+1)*sizeof(char));
 	read(fileDesc, stream, fileBytes);
@@ -146,7 +136,6 @@ struct node* traverse(char* currentDir, struct node* head, char action, char * h
 		char *fileType;
 		if(typeInt == 0){
 			fileType = "Directory";
-			//printf("%s\n   >> %s\n", path, fileType); 
 			// append a '/' character to the end of current path, then traverse into nested directories
 			char* newPath = (char*)malloc((strlen(path)+2)*sizeof(char));
 			strcpy(newPath, path);
@@ -156,11 +145,8 @@ struct node* traverse(char* currentDir, struct node* head, char action, char * h
 			continue;
 		}else if(typeInt == 1){
 			fileType = "Regular File";
-			//printf("%s\n   >> %s\n", path, fileType); 
 			if(action == 'b'){
 				top = tokenizeFile(path, top);
-				printTokens(top);
-				publish(genBook(top), "\0", 0);
 			}else if(action == 'c'){
 				compress(path, huffmanCodebookPath);
 			}else if(action == 'd'){
@@ -170,10 +156,12 @@ struct node* traverse(char* currentDir, struct node* head, char action, char * h
 		}else {
 			fileType = "Neither";
 		}
-		//printf("%s\n   >> %s\n", path, fileType); 
 		free(path);
 	}
 	// close the current directory
+	if(action == 'b'){
+		publish(genBook(top), "\0", 0);
+	}
 	closedir(dir);
 	return top;
 }
@@ -197,14 +185,18 @@ int main(int argc, char* argv[]){
 		}
 		counter++;
 	}
-	if(bFlag+cFlag+dFlag != 1){
-		printf("MUST BE AT LEAST AND AT MOST 1 -b, -c, or -d FLAG\n");
+	// b c and d flags are mutually exclusive
+	if(bFlag+cFlag+dFlag == 0){
+		printf("Invalid first flag. Please use -b, -c, -d or -R. \n");
+		return 0;
+	}else if(bFlag+cFlag+dFlag != 1){
+		printf("Must pick at most one of the following flags: -b, -c, or -d \n");
 		return 0;
 	}
 	
 	// file path always required
 	if(counter >= argc){
-		printf("NEED FILE PATH\n");
+		printf("No file or directory path present.\n");
 		return 0;
 	}else{
 		fileOrDirPath = (char*)malloc((strlen(argv[counter])+1)*sizeof(char));
@@ -214,7 +206,7 @@ int main(int argc, char* argv[]){
 	
 	if(dFlag+cFlag==1){
 		if(counter >= argc){
-			printf("NEED HUFFMAN CODEBOOK\n");
+			printf("Huffman Codebook path not present.\n");
 			return 0;
 		}else{
 			huffmanPath = (char*)malloc((strlen(argv[counter])+1)*sizeof(char));
@@ -228,8 +220,7 @@ int main(int argc, char* argv[]){
 		printf("Too many arguments\n");
 		return 0;
 	}
-	
-	// b c and d flags are mutually exclusive
+
 	
 	
 	/* ----- BEGIN OPERATION HERE ----- */
@@ -238,9 +229,9 @@ int main(int argc, char* argv[]){
 	stat(fileOrDirPath, &path_stat);
 	if(S_ISREG(path_stat.st_mode)){
 		if(rFlag == 1){
-			printf("Cannot complete recursive operation on file with -R flag\n");
-			return 0;
+			printf("The flag -R should only be used on directories. Proceeding with action for the current file... \n");
 		}
+		printf("%s\n",fileOrDirPath);
 		if(bFlag == 1){
 			head = tokenizeFile(fileOrDirPath, head);
 			publish(genBook(head), "\0", 0);
@@ -266,19 +257,7 @@ int main(int argc, char* argv[]){
 	}else{
 		printf("Not a valid file or directory path\n");
 		return 0;
-	}/*
-	struct node* head;
-	printf("\n-------Open Root Directory-------\n");
-	head = traverse(fileOrDirPath, head);
-	printf("-------Close Root Directory-------\n\n");
-	printTokens(head);*/
-	//publish(genBook(head), "\0");
-	//compress("./SecondDir/a.txt", "./HuffmanCodebook");
-	//decode("./SecondDir/a.txt.hcz", "./HuffmanCodebook");
-	/*printf("Command Line Argument: %s\n",argv[1]);
-	if(strcmp(argv[1], "-b") == 0){
-		printf("I'M GOING TO BUILD A CODEBOOK\n");
-	}*/
+	}
 	free(fileOrDirPath);
 	return 1;
 }
