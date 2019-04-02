@@ -8,6 +8,10 @@
 #include <fcntl.h>
 #include "header.h"
 
+
+// return 1 if given file path is for a regular file
+// return 0 if given file path is for a directory
+// return -1 if given file path is for neither a directory or file
 int regularFileOrDirectory(const char* path){
 	struct stat fileStat;
 	if(stat(path, &fileStat) < 0){
@@ -22,6 +26,7 @@ int regularFileOrDirectory(const char* path){
 	}
 }
 
+// add a token to linked list, creating a new node or incrementing freq if exists already
 struct node* addToken(char* token, struct node* head){
 	struct node* current = head;
 	if(head != NULL){
@@ -51,7 +56,9 @@ struct node* addToken(char* token, struct node* head){
 	return head;
 }
 
+// find the next delimiter/escape character if any, and add both the token, and escape character to token linked list
 struct node* tokenize(char* string, int totalBytes, struct node* head){
+	// return immediately if file is empty: no tokens
 	if(totalBytes == 0){
 		return head;
 	}
@@ -62,18 +69,22 @@ struct node* tokenize(char* string, int totalBytes, struct node* head){
 	char *nextString;
 	char *startToken = str;
 	while(totalBytes >= 0){
+		// if file does not end in escape code, just add the remaining token if there exists one
 		if(totalBytes == 0){
 			head = addToken(startToken, head);
 			break;
 		}
+		// check for escape codes
 		if((*str >= 7 && *str <= 13) || (*str == 26) || (*str == 27) || (*str == 0) || (*str == ' ')){
 			char special[2] = "\0";
 			special[0] = *str;
 			nextString = str + 1;
 			*str = '\0';
+			// if token isn't null, add to linked list
 			if(strlen(startToken) != 0){
 				head = addToken(startToken, head);
 			}
+			// add escape code to linked list
 			head = addToken(special, head);
 			str = nextString;
 			startToken = nextString;
@@ -89,6 +100,7 @@ struct node* tokenize(char* string, int totalBytes, struct node* head){
 	free(top);
 	return head;
 }
+
 // parameter: file path
 struct node * tokenizeFile(char * path, struct node* head){
 	struct node* top = head;
@@ -140,16 +152,21 @@ struct node* traverse(char* currentDir, struct node* head, char action, char * h
 			char* newPath = (char*)malloc((strlen(path)+2)*sizeof(char));
 			strcpy(newPath, path);
 			strcat(newPath, "/");
+			// recursively go through nested directories and find tokens
 			top = traverse(newPath, top, action, huffmanCodebookPath);
 			free(newPath);
 			continue;
 		}else if(typeInt == 1){
+			// tokenize file and add tokens to linked list, keeping track of frequency
 			fileType = "Regular File";
 			if(action == 'b'){
+				// find all tokens
 				top = tokenizeFile(path, top);
 			}else if(action == 'c'){
+				// compress given file with the given huffman codebook
 				compress(path, huffmanCodebookPath);
 			}else if(action == 'd'){
+				// decode given file with the given huffman codebook
 				decode(path, huffmanCodebookPath);
 			}
 			continue;
@@ -160,6 +177,7 @@ struct node* traverse(char* currentDir, struct node* head, char action, char * h
 	}
 	// close the current directory
 	if(action == 'b'){
+		// after all tokens found, generate codebook
 		publish(genBook(top), "\0", 0);
 	}
 	closedir(dir);
@@ -171,6 +189,7 @@ int main(int argc, char* argv[]){
 	char * huffmanPath;
 	int counter = 1, bFlag = 0, cFlag = 0, dFlag = 0, rFlag = 0;
 	// check for b, d, c, and R flags
+	// stop when reached neither of them
 	while(counter < argc){
 		if(strcmp(argv[counter],"-b")==0){
 			bFlag = 1;
@@ -204,6 +223,7 @@ int main(int argc, char* argv[]){
 		counter++;
 	}
 	
+	// require huffman codebook path if trying to compress or decode
 	if(dFlag+cFlag==1){
 		if(counter >= argc){
 			printf("Huffman Codebook path not present.\n");
@@ -216,6 +236,7 @@ int main(int argc, char* argv[]){
 	}else {
 		huffmanPath = "";
 	}
+	// reject extra arguments
 	if(counter != argc){
 		printf("Too many arguments\n");
 		return 0;
@@ -227,7 +248,10 @@ int main(int argc, char* argv[]){
 	struct node* head;
 	struct stat path_stat;
 	stat(fileOrDirPath, &path_stat);
+	
+	// if regular file, only operate on that single file
 	if(S_ISREG(path_stat.st_mode)){
+		// supply a warning if given -R flag for a file path and continue operation
 		if(rFlag == 1){
 			printf("The flag -R should only be used on directories. Proceeding with action for the current file... \n");
 		}
@@ -241,6 +265,7 @@ int main(int argc, char* argv[]){
 			decode(fileOrDirPath, huffmanPath);
 		}
 	}else if(S_ISDIR(path_stat.st_mode)){
+		// check for -R
 		if(rFlag != 1){
 			printf("Cannot complete operation on directory without -R flag\n");
 			return 0;
@@ -253,8 +278,10 @@ int main(int argc, char* argv[]){
 		}else if(dFlag == 1){
 			action = 'd';
 		}
+		// traverse through directories with given method
 		head = traverse(fileOrDirPath, head, action, huffmanPath);
 	}else{
+		// if neither directory or file, fail gracefully
 		printf("Not a valid file or directory path\n");
 		return 0;
 	}

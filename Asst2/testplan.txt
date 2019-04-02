@@ -1,0 +1,21 @@
+# Asst2 - Test Plan - Jonathan Hong + Brian Ma
+From the beginning, our biggest concern was being able to execute our code to perform the basic
+functionality of creating a huffman codebook, compressing regular files using the codebook, and 
+then decoding it with the same codebook. These actions can be done recursively through directories 
+or directly to one file at a time. The most effective way of testing was to test each function
+(build, compress, decode) individually, making sure there aren't segfaults for each one, and that
+the values in the output files (HuffmanCodebook, <fileName>.txt.hcz, and <fileName>.txt) are displaying
+values that we expected. In order to test these, we created test cases, directories, nested directories,
+text files, c files, etc. In each of the files, we create sample text specifically designed to test different
+edge cases. That meant multiple escape characters side by side, empty files, etc. So with the build method,
+we ran testing for building a codebook recursively, and for just a single file. The resulting HuffmanCodebook
+should be generated, containing each of our tokens and their corresponding binary paths, which we thoroughly
+checked for. We tested compressing and decoding in the same way, recursively and for a single file. We'd then
+check the compressed file for the proper encoding, referencing the codebook to double check that the sequence
+and values are correct. Then for decoding, it was easy. We just had to make sure the resulting file contained 
+identical tokens as it started with. Next, we tested each permutation of each command line flags, to allow the flags
+in any order, given the right flags. Any invalid flags, such as providing more than one of the following flags[-b,-c,-d]
+or any non-existent flags had to gracefully fail. Then, for certain flags, -d and -c, we had to check for file paths
+and huffman code paths, otherwise we would also gracefully fail. Whenever we give a directory path, we require -R flags
+and if we pass a -R flag along with a file path, we throw a warning, but continue the operation for that file. We covered
+a lot of the different scenarios we brainstormed of, and addressed them with graceful failures or efficient solutions.
