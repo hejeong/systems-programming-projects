@@ -124,10 +124,8 @@ struct node* traverse(char* currentDir, struct node* head, char action, char * h
 	struct node* top = head;
 	
 	strcpy(buffer, currentDir);
-	
 	//open directory
 	dir = opendir(buffer);
-	
 	//graceful error if dir can't be opened
 	if(dir == NULL){
 		printf("Directory %s cannot be opened\n", currentDir);
@@ -141,8 +139,11 @@ struct node* traverse(char* currentDir, struct node* head, char action, char * h
 		// dynamically allocate memory to create the path for file or directory
 		path = (char*)malloc((strlen(currentDir)+strlen(dent->d_name)+2)*sizeof(char));
 		strcpy(path, currentDir);
+		if(currentDir[strlen(currentDir)-1] != '/'){
+			strcat(path, "/");
+		}
 		strcat(path, dent->d_name);
-		
+		printf("path: %s\n", path);
 		// check the file type [directory, regular file, neither]
 		int typeInt = regularFileOrDirectory(path);
 		char *fileType;
