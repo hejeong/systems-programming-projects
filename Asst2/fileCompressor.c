@@ -26,9 +26,9 @@ int regularFileOrDirectory(const char* path){
 	}
 }
 
-// add a token to linked list, creating a new node or incrementing freq if exists already
-struct node* addToken(char* token, struct node* head){
-	struct node* current = head;
+// add a token to linked list, creating a new treeNode or incrementing freq if exists already
+struct treeNode* addToken(char* token, struct treeNode* head){
+	struct treeNode* current = head;
 	if(head != NULL){
 		while(current != NULL){
 			if(strcmp(current->token, token) == 0){
@@ -42,8 +42,8 @@ struct node* addToken(char* token, struct node* head){
 			}
 		}
 	}
-	// if we reach this point, token doesn't exist, and so we create a new node and append to end
-	struct node * newNode = (struct node *) malloc(sizeof(struct node));
+	// if we reach this point, token doesn't exist, and so we create a new treeNode and append to end
+	struct treeNode * newNode = (struct treeNode *) malloc(sizeof(struct treeNode));
 	newNode->token = malloc((strlen(token) + 1)*sizeof(char));
 	strcpy(newNode->token, token);
 	newNode->freq = 1;
@@ -57,7 +57,7 @@ struct node* addToken(char* token, struct node* head){
 }
 
 // find the next delimiter/escape character if any, and add both the token, and escape character to token linked list
-struct node* tokenize(char* string, int totalBytes, struct node* head){
+struct treeNode* tokenize(char* string, int totalBytes, struct treeNode* head){
 	// return immediately if file is empty: no tokens
 	if(totalBytes == 0){
 		return head;
@@ -102,8 +102,8 @@ struct node* tokenize(char* string, int totalBytes, struct node* head){
 }
 
 // parameter: file path
-struct node * tokenizeFile(char * path, struct node* head){
-	struct node* top = head;
+struct treeNode * tokenizeFile(char * path, struct treeNode* head){
+	struct treeNode* top = head;
 	int fileBytes = getFileSizeInBytes(path);
 	int fileDesc = open(path, O_RDONLY);
 	char* stream = malloc((fileBytes+1)*sizeof(char));
@@ -116,18 +116,16 @@ struct node * tokenizeFile(char * path, struct node* head){
 }
 
 // parameter: current path
-struct node* traverse(char* currentDir, struct node* head, char action, char * huffmanCodebookPath){
+struct treeNode* traverse(char* currentDir, struct treeNode* head, char action, char * huffmanCodebookPath){
 	DIR *dir;
 	struct dirent *dent;
 	char buffer[50];
 	char *path;
-	struct node* top = head;
+	struct treeNode* top = head;
 	
 	strcpy(buffer, currentDir);
-	
 	//open directory
 	dir = opendir(buffer);
-	
 	//graceful error if dir can't be opened
 	if(dir == NULL){
 		printf("Directory %s cannot be opened\n", currentDir);
@@ -141,8 +139,10 @@ struct node* traverse(char* currentDir, struct node* head, char action, char * h
 		// dynamically allocate memory to create the path for file or directory
 		path = (char*)malloc((strlen(currentDir)+strlen(dent->d_name)+2)*sizeof(char));
 		strcpy(path, currentDir);
+		if(currentDir[strlen(currentDir)-1] != '/'){
+			strcat(path, "/");
+		}
 		strcat(path, dent->d_name);
-		
 		// check the file type [directory, regular file, neither]
 		int typeInt = regularFileOrDirectory(path);
 		char *fileType;
@@ -245,7 +245,7 @@ int main(int argc, char* argv[]){
 	
 	
 	/* ----- BEGIN OPERATION HERE ----- */
-	struct node* head;
+	struct treeNode* head;
 	struct stat path_stat;
 	stat(fileOrDirPath, &path_stat);
 	

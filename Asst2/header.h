@@ -14,6 +14,7 @@ struct treeNode
 {	
 	char * token;
 	int freq;
+	struct treeNode * next;
 	struct treeNode * left;
 	struct treeNode * right;
 };
@@ -31,81 +32,78 @@ int getFileSizeInBytes(const char* path){
 	int size = fileStat.st_size;
 	return size;
 }
+
+int iterate(struct treeNode * ptr){
+	if(ptr == NULL){
+		return 0;
+	}
+	if(ptr->token != NULL){
+		printf("%s\n", ptr->token);
+	}
+	iterate(ptr->left);
+	iterate(ptr->right);
+}
+
 //creates avl tree based on linked list of tokens
-struct treeNode * genBook (struct node * list){
+struct treeNode * genBook (struct treeNode * list){
 	
 	if(list == NULL){
 		return NULL;
 	}
+	struct treeNode * ptr = list;
+	struct treeNode * prev = list;
+	struct treeNode * head = list;
 	
-	struct node * ptr = list;
+	struct treeNode * first;
+	struct treeNode * firstPrev;
+	struct treeNode * second;
+	struct treeNode * secondPrev;
 	int count = 0;
-	//counts how many nodes there are in the list
-	while(ptr != NULL){
-		count++;
-		ptr = ptr-> next;
-	}
-	ptr = list;
-	//converts regular nodes into tree leafs for combining
-	struct treeNode ** arr = malloc(count * sizeof(struct treeNode *));
-	int i = 0;
-	for(i = 0; i < count; i++){
-		arr[i] = malloc(sizeof(struct treeNode));
-		arr[i] -> token = malloc(strlen(ptr->token));
-		arr[i] -> left = NULL;
-		arr[i] -> right = NULL;
-		strcpy(arr[i] -> token, ptr -> token);
-		arr[i] -> freq = ptr -> freq;
-		ptr = ptr -> next;
-	}
-	if(count == 1){
-		return arr[0];
-	}
 	//combines the individual leafs into a single tree
 	while(1 == 1){
-		int amt = 0;
-		int first = -1;
-		int second = -1;
-		//finds initial starting point for "pointers" to look for two lowest nodes
-		for(i = 0; i < count; i++){
-			if(arr[i] != NULL){
-				amt++;
-				if(first == -1){
-					first = i;
-				} else if(second == -1){
-					second = i;
-				}
-			}
+		if(head->next == NULL){
+			return head;
 		}
-		//checks to see if there are at least two leafs left to combine
-		if(amt < 2){
-			return arr[first];
-			break;
-		}
-		//finds the two lowest treeNodes
-		for(i = 0; i < count; i++){
-			if(arr[i] != NULL){
-				if(arr[i]->freq <= arr[first]->freq && i != second){
-					first = i;
-				}
+		first = head->next;
+		firstPrev = head;
+		second = head;
+		secondPrev = head;
+		ptr = head;
+		while(ptr != NULL){
+			if(first->freq > ptr->freq && second != ptr){
+				first = ptr;
+				firstPrev = prev;
 			}
+			prev = ptr;
+			ptr = ptr->next;
 		}
-		for(i = 0; i < count; i++){
-			if(arr[i] != NULL){
-				if(arr[i]->freq <= arr[second]->freq && i != first){
-					second = i;
-				}
+		ptr = head;
+		while(ptr != NULL){
+			if(second->freq > ptr->freq && first != ptr){
+				second = ptr;
+				secondPrev = prev;
 			}
+			prev = ptr;
+			ptr = ptr->next;
 		}
 		//creates the parent node to hold the two nodes that were combined
 		//and removes the two nodes that were combined from the array
 		struct treeNode * combine = malloc(sizeof(struct treeNode));
 		combine->token = NULL;
-		combine->freq = arr[first]->freq + arr[second]->freq;
-		combine->left = arr[first];
-		combine->right = arr[second];
-		arr[first] = combine;
-		arr[second] = NULL;
+		combine->freq = first->freq + second->freq;
+		combine->left = first;
+		combine->right = second;
+		count = 0;
+		firstPrev->next = first->next;
+		if(firstPrev->next == second){
+			firstPrev->next = second->next;
+		}else if(second == head){
+			head = head->next;
+		}else{
+			secondPrev->next = second->next;
+		}
+		combine->next = head;
+		head = combine;
 	}
 }
 //turns an escape sequence to a printable string with a backtick instead of slash
