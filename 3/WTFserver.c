@@ -19,29 +19,33 @@ struct node{
 pthread_mutex_t masterLock;
 struct node * keychain;
 
-int create(char * project, int sock){
-	DIR * dir;
+int regularFileOrDirectory(const char* path){
+	struct stat fileStat;
+	if(stat(path, &fileStat) < 0){
+		return -1;
+	}
+	// Return 0 if it is of type "Directory"
+	// Else Return 1 if it is of type "Regular File"
+	if(S_ISDIR(fileStat.st_mode)){
+		return 0;
+	}else if(S_ISREG(fileStat.st_mode)){
+		return 1;
+	}
+}
+
+int create(char * projDir, int sock){
 	if(pthread_mutex_lock(&masterLock) != 0){
 		printf("broken thread lock\n");
 		return 0;
 	}
-	struct stat st1 = {0};
-	if (stat("./projects", &st1) == -1) {
-		mkdir("./projects", 0700);
-	}
 	
-	dir = opendir("./projects");
-	
-	
-	char * projDir = malloc(12 + strlen(project));
-	strcpy(projDir, "./projects/\0");
-	strcat(projDir, project);
-	
-	struct stat st2 = {0};
-	if (stat(projDir, &st2) == -1) {
+	struct stat st = {0};
+	if (stat(projDir, &st) == -1) {
 		mkdir(projDir, 0700);
 	}else{
 		printf("project already exists\n");
+		send(sock, "0", 1, 0);
+		return 0;
 	}
 	
 	
@@ -76,7 +80,7 @@ int create(char * project, int sock){
 	fstat(fd, &fileStat);
 	sprintf(fileSize, "%d", fileStat.st_size);
 	send(sock, fileSize, strlen(fileSize), 0);
-	printf("sent %s\n", fileSize);
+	printf("sent %s    length %d\n", fileSize, strlen(fileSize));
 	sleep(1);
 	int sent;
 	int remaining = fileStat.st_size;
@@ -92,6 +96,58 @@ int create(char * project, int sock){
 	
 	pthread_mutex_unlock(&masterLock);
 	return 0;
+}
+
+int destroy(char * currentDir){
+	DIR *dir;
+	struct dirent *dent;
+	char buffer[1000];
+	char *path;
+	
+	strcpy(buffer, currentDir);
+	//open directory
+	dir = opendir(buffer);
+	//graceful error if dir can't be opened
+	if(dir == NULL){
+		printf("Directory %s cannot be opened\n", currentDir);
+		return;
+	}
+	while((dent = readdir(dir)) != NULL){
+		// skip over [.] and [..]
+		if(!strcmp(".", dent->d_name) || !strcmp("..", dent->d_name)){
+			continue;	
+		}
+		// dynamically allocate memory to create the path for file or directory
+		path = (char*)malloc((strlen(currentDir)+strlen(dent->d_name)+2)*sizeof(char));
+		strcpy(path, currentDir);
+		if(currentDir[strlen(currentDir)-1] != '/'){
+			strcat(path, "/");
+		}
+		strcat(path, dent->d_name);
+		// check the file type [directory, regular file, neither]
+		int typeInt = regularFileOrDirectory(path);
+		char *fileType;
+		if(typeInt == 0){
+			fileType = "Directory";
+			// append a '/' character to the end of current path, then traverse into nested directories
+			char* newPath = (char*)malloc((strlen(path)+2)*sizeof(char));
+			strcpy(newPath, path);
+			strcat(newPath, "/");
+			destroy(newPath);
+			free(newPath);
+			continue;
+		}else if(typeInt == 1){
+			// tokenize file and add tokens to linked list, keeping track of frequency
+			fileType = "Regular File";
+			remove(path);
+			continue;
+		}else {
+			fileType = "Neither";
+		}
+		free(path);
+	}
+	// close the current directory
+	closedir(dir);
 }
 
 int main(int argc, char** argv){
@@ -138,12 +194,24 @@ int main(int argc, char** argv){
 		printf("client accepted\n");
 		char command[50];
 		recv(comm, command, 50, 0);
+		char name[2000];
+		recv(comm, name, 2000, 0);
+		
+		struct stat st = {0};
+		if (stat("./projects", &st) == -1) {
+			mkdir("./projects", 0700);
+		}
+	
+		char * projDir = malloc(12 + strlen(name));
+		strcpy(projDir, "./projects/\0");
+		strcat(projDir, name);
+		
 		if(strcmp(command, "create") == 0){
-			char name[2000];
-			recv(comm, name, 2000, 0);
-			create(name, comm);
-		}else if(strcmp(command, "destroy") == 0){
-			//destroy(buffer);
+			create(projDir, comm);
+		}
+		
+		if(strcmp(command, "destroy") == 0){
+			destroy(projDir);
 		}
 	}
 	return 0;

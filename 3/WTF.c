@@ -12,6 +12,18 @@
 
 int create(char * name, int sock){
 	
+	send(sock, "create", 6, 0);
+	sleep(1);
+	send(sock, name, strlen(name), 0);
+	char buffer[1000];
+	recv(sock, buffer, 1000, 0);
+	int size = atoi(buffer);
+	
+	if(size == 0){
+		printf("project already exists on the server\n");
+		return 0;
+	}
+	
 	char * projDir = malloc(3 + strlen(name));
 	strcpy(projDir, "./\0");
 	strcat(projDir, name);
@@ -20,21 +32,15 @@ int create(char * name, int sock){
 	if (stat(projDir, &st2) == -1) {
 		mkdir(projDir, 0700);
 	}else{
-		printf("project already exists\n");
+		printf("project created successfully in server, however project already exists in local repository. Please use the checkout command to get the new project\n");
 		return 0;
 	}
 	
 	char * manifest = malloc(12 + strlen(projDir));
 	strcpy(manifest, projDir);
 	strcat(manifest, "/.Manifest");
-	
 	int fd = open(manifest, O_CREAT | O_RDWR | O_TRUNC, S_IWUSR | S_IRUSR);
-	send(sock, "create", 6, 0);
-	sleep(1);
-	send(sock, name, strlen(name), 0);
-	char buffer[1000];
-	recv(sock, buffer, 1000, 0);
-	int size = atoi(buffer);
+	
 	int remaining = size;
 	int written;
 	while( (remaining > 0) && ((written = recv(sock, buffer, 1000, 0)) > 0) ){
@@ -68,7 +74,6 @@ int main(int argc, char ** argv){
 	}
 	printf("connected\n");
 	create("p1", socketfd);
-	
 	
 	return 0;
 }
