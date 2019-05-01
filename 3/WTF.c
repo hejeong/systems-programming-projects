@@ -65,6 +65,8 @@ int destroy(char * name, int sock){
 
 int main(int argc, char ** argv){
 	int port = atoi(argv[1]);
+	char * command = malloc(strlen(argv[2]) + 1);
+	strcpy(command, argv[2]);
 	struct sockaddr_in address;
 	memset(&address, 0, sizeof(address));
 	
@@ -76,6 +78,9 @@ int main(int argc, char ** argv){
 	if (socketfd <= 0){
 		printf("ERROR: Failed to open socket.\n");
 	}
+	
+	char * name = malloc(strlen(argv[3]) + 1);
+	strcpy(name, argv[3]);
 
 	if (connect(socketfd, (struct sockaddr *) &address, sizeof(address)) < 0)
 	{
@@ -83,9 +88,12 @@ int main(int argc, char ** argv){
 		return -1;
 	}
 	printf("connected\n");
-	//create("p1", socketfd);
-	//printf("created\n");
-	destroy("p1", socketfd);
+	if(strcmp(command, "create") == 0){
+		create(name, socketfd);
+	}else if(strcmp(command, "destroy") == 0){
+		destroy(name, socketfd);
+	}
+
 	
 	return 0;
 }

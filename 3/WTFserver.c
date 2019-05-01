@@ -212,13 +212,18 @@ int main(int argc, char** argv){
 		struct stat st2 = {0};
 		if (stat(projDir, &st2) == -1) {
 			printf("project does not exist on server\n");
+			send(comm, "project does not exist on the server\0", 50, 0);
+			close(comm);
+			close(list);
+			
 			return 0;
 		}
 		
 		if(strcmp(command, "destroy") == 0){
 			destroy(projDir);
-			send(comm, "success", 7, 0);
+			send(comm, "success\0", 8, 0);
 		}
 	}
+	
 	return 0;
 }
