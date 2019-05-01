@@ -7,6 +7,45 @@
 #include <string.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include <fcntl.h>
+#include <stddef.h>
+
+int create(char * name, int sock){
+	
+	char * projDir = malloc(3 + strlen(name));
+	strcpy(projDir, "./\0");
+	strcat(projDir, name);
+	
+	struct stat st2 = {0};
+	if (stat(projDir, &st2) == -1) {
+		mkdir(projDir, 0700);
+	}else{
+		printf("project already exists\n");
+		return 0;
+	}
+	
+	char * manifest = malloc(12 + strlen(projDir));
+	strcpy(manifest, projDir);
+	strcat(manifest, "/.Manifest");
+	
+	int fd = open(manifest, O_CREAT | O_RDWR | O_TRUNC, S_IWUSR | S_IRUSR);
+	
+	send(sock, "create", 6, 0);
+	char buffer[1000];
+	recv(sock, buffer, 1000, 0);
+	int size = atoi(buffer);
+	int remaining = size;
+	int written;
+	while( (remaining > 0) && ((written = recv(sock, buffer, 1000, 0)) > 0) ){
+		printf("haha\n");
+		write(fd, buffer, written);
+		remaining = remaining - written;
+		printf("%d remaining\n", remaining);
+	}
+	close(fd);
+	return 0;
+}
+
 int main(int argc, char ** argv){
 	int port = atoi(argv[1]);
 	struct sockaddr_in address;
@@ -14,6 +53,7 @@ int main(int argc, char ** argv){
 	
 	address.sin_family = AF_INET;
 	address.sin_port = htons(port);
+	//addr.sin_addr.s_addr = inet_addr("1.1.1.1.1");
 
 	int socketfd = socket(AF_INET,SOCK_STREAM, 0);
 	if (socketfd <= 0){
@@ -25,9 +65,9 @@ int main(int argc, char ** argv){
 		printf("Error: Connection failed.\n");
 		return -1;
 	}
-	char buffer[20];
-	send(socketfd, "create", 6, 0);
-	read(socketfd, buffer, 20);
-	printf("%s\n", buffer);
+	printf("connected\n");
+	create("create", socketfd);
+	
+	
 	return 0;
 }
