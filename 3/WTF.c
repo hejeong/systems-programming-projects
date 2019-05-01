@@ -53,6 +53,16 @@ int create(char * name, int sock){
 	return 0;
 }
 
+int destroy(char * name, int sock){
+	send(sock, "destroy", 7, 0);
+	sleep(1);
+	send(sock, name, strlen(name), 0);
+	char buffer[1000];
+	recv(sock, buffer, 1000, 0);
+	printf("%s\n", buffer);
+	return 0;
+}
+
 int main(int argc, char ** argv){
 	int port = atoi(argv[1]);
 	struct sockaddr_in address;
@@ -73,7 +83,9 @@ int main(int argc, char ** argv){
 		return -1;
 	}
 	printf("connected\n");
-	create("p1", socketfd);
+	//create("p1", socketfd);
+	//printf("created\n");
+	destroy("p1", socketfd);
 	
 	return 0;
 }

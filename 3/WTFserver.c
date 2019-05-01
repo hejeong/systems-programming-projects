@@ -33,7 +33,7 @@ int regularFileOrDirectory(const char* path){
 	}
 }
 
-int create(char * projDir, int sock){
+int create(char * projDir, int sock, char * name){
 	if(pthread_mutex_lock(&masterLock) != 0){
 		printf("broken thread lock\n");
 		return 0;
@@ -48,16 +48,11 @@ int create(char * projDir, int sock){
 		return 0;
 	}
 	
-	
-	if(keychain == NULL){
-		keychain = malloc(sizeof(struct node));
-		keychain->name = malloc(strlen(project));
-		strcpy(keychain->name, project);
-		keychain->next = NULL;
-		if(pthread_mutex_init(&(keychain->lock), NULL) == 0){
-			printf("works\n");
-		}
-	}
+	struct node * ptr = malloc(sizeof(struct node));
+	ptr->name = malloc(strlen(name));
+	strcpy(ptr->name, name);
+	ptr->next = keychain;
+	keychain = ptr;
 	
 	char * verDir = malloc(1 + strlen(projDir));
 	strcpy(verDir, projDir);
@@ -133,12 +128,14 @@ int destroy(char * currentDir){
 			char* newPath = (char*)malloc((strlen(path)+2)*sizeof(char));
 			strcpy(newPath, path);
 			strcat(newPath, "/");
+			printf("dir %s\n", currentDir);
 			destroy(newPath);
 			free(newPath);
 			continue;
 		}else if(typeInt == 1){
 			// tokenize file and add tokens to linked list, keeping track of frequency
 			fileType = "Regular File";
+			printf("file %s\n", currentDir);
 			remove(path);
 			continue;
 		}else {
@@ -146,6 +143,7 @@ int destroy(char * currentDir){
 		}
 		free(path);
 	}
+	remove(currentDir);
 	// close the current directory
 	closedir(dir);
 }
@@ -197,8 +195,10 @@ int main(int argc, char** argv){
 		char name[2000];
 		recv(comm, name, 2000, 0);
 		
-		struct stat st = {0};
-		if (stat("./projects", &st) == -1) {
+		printf("client wants to %s %s\n", command, name);
+		
+		struct stat st1 = {0};
+		if (stat("./projects", &st1) == -1) {
 			mkdir("./projects", 0700);
 		}
 	
@@ -207,11 +207,17 @@ int main(int argc, char** argv){
 		strcat(projDir, name);
 		
 		if(strcmp(command, "create") == 0){
-			create(projDir, comm);
+			create(projDir, comm, name);
+		}
+		struct stat st2 = {0};
+		if (stat(projDir, &st2) == -1) {
+			printf("project does not exist on server\n");
+			return 0;
 		}
 		
 		if(strcmp(command, "destroy") == 0){
 			destroy(projDir);
+			send(comm, "success", 7, 0);
 		}
 	}
 	return 0;
