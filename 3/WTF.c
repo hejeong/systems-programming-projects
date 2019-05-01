@@ -2,6 +2,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <string.h>
 #include <pthread.h>
 #include <semaphore.h>
@@ -24,7 +26,8 @@ int main(int argc, char ** argv){
 		return -1;
 	}
 	char buffer[20];
-	int valread = read(socketfd, buffer, 8);
+	send(socketfd, "create", 6, 0);
+	read(socketfd, buffer, 20);
 	printf("%s\n", buffer);
 	return 0;
 }

@@ -1,13 +1,42 @@
-//"The server will opena  port and wait for connection requests. On connection, it will spawn a service thread to handle that connection and go back to waiting for requests. Each service thread should read in a client request, if it is a sort request, it should perform the sort and store the results at the server. If it is a dump request, it should merge the current collection of sorted results into one sorted list and send the result back to the client. You may want/need to make use of synchronization constructs like mutex_locks, semaphores, and/or condition variables in your implementation to prevent memory corruption.
-//The server will run until stopped by a SIGKILL (i.e. kill <pid of server>)
-//To STDOUT, output a list of ip addresses of all the clients that have connected (?-> when>) Received connections from: <ipaddress>,<ipaddress>,<ipaddress>,..
 #include <stdio.h>
+#include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <string.h>
 #include <pthread.h>
 #include <semaphore.h>
+struct node{
+	pthread_mutex_t lock;
+	char * name;
+	struct node * next;
+};
+pthread_mutex_t masterLock;
+struct node * keychain;
+
+int create(char * project){
+	pthread_mutex_lock(&masterLock);
+	struct stat st = {0};
+	if (stat("./projects", &st) == -1) {
+		mkdir("./projects", 0700);
+	}
+	
+	if(keychain == NULL){
+		keychain = malloc(sizeof(struct node));
+		keychain->name = malloc(strlen(project));
+		strcpy(keychain->name, project);
+		keychain->next = NULL;
+		if(pthread_mutex_init(&(keychain->lock), NULL) == 0){
+			printf("works\n");
+		}
+	}
+	if(pthread_mutex_lock(&(keychain->lock)) == 0){
+		printf("locked\n");
+	}
+	pthread_mutex_unlock(&(keychain->lock));
+	pthread_mutex_unlock(&masterLock);
+	return 0;
+}
 
 int main(int argc, char** argv){
 	struct sockaddr_in address;
@@ -50,7 +79,16 @@ int main(int argc, char** argv){
 		/*char str[INET_ADDRSTRLEN];
 		inet_ntop(AF_INET,&(incoming.sin_addr),str,INET_ADDRSTRLEN);
 		printf("%s,",str);*/
-		send(newfd, "haha", 4, 0);	
+		char buffer[2000];
+		read(newfd, buffer, 2000);
+		if(strcmp(buffer, "create") == 0){
+			create(buffer);
+			send(newfd, "haha", 4, 0);
+		}else if(strcmp(buffer, "destroy") == 0){
+			//destroy(buffer);
+		}
+		sleep(2);
+		send(newfd, "poop\0", 5, 0);	
 	}
 	return 0;
 }
