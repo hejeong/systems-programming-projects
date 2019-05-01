@@ -54,8 +54,14 @@ int create(char * project, int sock){
 			printf("works\n");
 		}
 	}
-	char * manifest = malloc(12 + strlen(projDir));
-	strcpy(manifest, projDir);
+	
+	char * verDir = malloc(1 + strlen(projDir));
+	strcpy(verDir, projDir);
+	strcat(verDir, "/1\0");
+	mkdir(verDir, 0700);
+	
+	char * manifest = malloc(12 + strlen(verDir));
+	strcpy(manifest, verDir);
 	strcat(manifest, "/.Manifest");
 	int fd = open(manifest, O_CREAT | O_RDWR | O_TRUNC, S_IRWXU | S_IRWXG);
 	if(fd == -1){
@@ -80,9 +86,6 @@ int create(char * project, int sock){
 		printf("sent %d\n", sent);
 		remaining = remaining - sent;
 	}
-	
-	
-	printf("haha\n");
 	
 	
 	close(fd);
@@ -133,11 +136,13 @@ int main(int argc, char** argv){
 		inet_ntop(AF_INET,&(incoming.sin_addr),str,INET_ADDRSTRLEN);
 		printf("%s,",str);*/
 		printf("client accepted\n");
-		char buffer[2000];
-		recv(comm, buffer, 2000, 0);
-		if(strcmp(buffer, "create") == 0){
-			create(buffer, comm);
-		}else if(strcmp(buffer, "destroy") == 0){
+		char command[50];
+		recv(comm, command, 50, 0);
+		if(strcmp(command, "create") == 0){
+			char name[2000];
+			recv(comm, name, 2000, 0);
+			create(name, comm);
+		}else if(strcmp(command, "destroy") == 0){
 			//destroy(buffer);
 		}
 	}

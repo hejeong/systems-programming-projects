@@ -29,8 +29,9 @@ int create(char * name, int sock){
 	strcat(manifest, "/.Manifest");
 	
 	int fd = open(manifest, O_CREAT | O_RDWR | O_TRUNC, S_IWUSR | S_IRUSR);
-	
 	send(sock, "create", 6, 0);
+	sleep(1);
+	send(sock, name, strlen(name), 0);
 	char buffer[1000];
 	recv(sock, buffer, 1000, 0);
 	int size = atoi(buffer);
@@ -66,7 +67,7 @@ int main(int argc, char ** argv){
 		return -1;
 	}
 	printf("connected\n");
-	create("create", socketfd);
+	create("p1", socketfd);
 	
 	
 	return 0;
