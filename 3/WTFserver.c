@@ -68,7 +68,7 @@ int create(char * projDir, int sock, char * name){
 		pthread_mutex_unlock(&masterLock);
 		return 0;
 	}
-	write(fd, "0\t1\n", 2);
+	write(fd, "0\t1\n", 4);
 	
 	struct stat fileStat;
 	char fileSize[1000];
