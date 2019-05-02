@@ -68,7 +68,7 @@ int create(char * projDir, int sock, char * name){
 		pthread_mutex_unlock(&masterLock);
 		return 0;
 	}
-	write(fd, "1\n", 2);
+	write(fd, "0\t1\n", 2);
 	
 	struct stat fileStat;
 	char fileSize[1000];
@@ -148,6 +148,101 @@ int destroy(char * currentDir){
 	closedir(dir);
 }
 
+int sendAll(char * dir, int sock){
+	FILE * fd;
+	char * manifest = malloc(12 + strlen(dir));
+	strcpy(manifest, dir);
+	strcat(manifest, ".Manifest");
+	fd = fopen(manifest, "r");
+	if(fd == NULL){
+		printf("Could not open Manifest\n");
+		send(sock, "0", 1, 0);
+		return 0;
+	}
+	char str[50];
+	fscanf(fd, "%s\t%*s\n", str);
+	send(sock, str, strlen(str), 0);
+	sleep(1);
+	char line[1000];
+	char buffer[2000];
+	while(fgets(line, 1000, fd)){
+		sscanf(line, "%*d %s", buffer);
+		char * file = malloc(strlen(dir) + strlen(buffer));
+		strcpy(file, dir);
+		strcat(file, buffer);
+		int currentFd;
+		currentFd = open(file, O_RDONLY);
+		printf("sending this file %s\n", file);
+		send(sock, buffer, 1000, 0); //sends appropriate directory of file
+		//finds size of file
+		struct stat fileStat;
+		char fileSize[100];
+		fstat(currentFd, &fileStat);
+		sprintf(fileSize, "%d", fileStat.st_size);
+		strcat(fileSize, "\0");
+		send(sock, fileSize, 1000, 0); //sends the size of file
+		printf("I said file is this big %s\n", fileSize);
+		int sent;
+		int remaining = fileStat.st_size;
+		while( (remaining > 0) && ((sent = sendfile(sock, currentFd, NULL, 1000)) > 0) ){
+			printf("sent %d\n", sent);
+			remaining = remaining - sent;
+		}
+		close(currentFd);
+	}
+	fclose(fd);
+	int mfd = open(manifest, O_RDONLY);
+	//find manifest size
+	struct stat mfileStat;
+	char mfileSize[100];
+	fstat(mfd, &mfileStat);
+	sprintf(mfileSize, "%d", mfileStat.st_size);
+	strcat(mfileSize, "\0");
+	send(sock, mfileSize, 1000, 0); //sends the size of manifest
+	
+	int msent;
+	int mremaining = mfileStat.st_size;
+	while( (mremaining > 0) && ((msent = sendfile(sock, mfd, NULL, 1000)) > 0) ){
+		printf("sent %d\n", msent);
+		mremaining = mremaining - msent;
+	}
+	return 0; 
+}
+
+int checkout(char * dirp, int sock, char * name){
+	DIR *dir;
+	struct dirent *dent;
+	int ver = 1;
+	//open directory
+	dir = opendir(dirp);
+	//graceful error if dir can't be opened
+	if(dir == NULL){
+		printf("Directory %s cannot be opened\n", dirp);
+		return;
+	}
+	//finds the latest version number
+	while((dent = readdir(dir)) != NULL){
+		// skip over [.] and [..]
+		if(!strcmp(".", dent->d_name) || !strcmp("..", dent->d_name)){
+			continue;	
+		}
+		int check;
+		check = atoi(dent->d_name);
+		if(check > ver){
+			ver = check;
+		}
+	}
+	char * projDir = malloc(4 + strlen(dirp));
+	strcpy(projDir, dirp);
+	strcat(projDir, "/\0");
+	char version[20];
+	sprintf(version, "%d", ver);
+	strcat(projDir, version);
+	strcat(projDir, "/\0");
+	sendAll(projDir, sock);
+	return 0;
+}
+
 int main(int argc, char** argv){
 	struct sockaddr_in address;
 	int list = socket(AF_INET,SOCK_STREAM,0);
@@ -208,20 +303,23 @@ int main(int argc, char** argv){
 		
 		if(strcmp(command, "create") == 0){
 			create(projDir, comm, name);
-		}
-		struct stat st2 = {0};
-		if (stat(projDir, &st2) == -1) {
-			printf("project does not exist on server\n");
-			send(comm, "project does not exist on the server\0", 50, 0);
-			close(comm);
-			close(list);
+		}else{
+			struct stat st2 = {0};
+			if (stat(projDir, &st2) == -1) {
+				printf("project does not exist on server\n");
+				send(comm, "error\0", 50, 0);
+				close(comm);
+				close(list);
+				
+				return 0;
+			}
 			
-			return 0;
-		}
-		
-		if(strcmp(command, "destroy") == 0){
-			destroy(projDir);
-			send(comm, "success\0", 8, 0);
+			if(strcmp(command, "destroy") == 0){
+				destroy(projDir);
+				send(comm, "success\0", 8, 0);
+			}else if(strcmp(command, "checkout") == 0){
+				checkout(projDir, comm, name);
+			}
 		}
 	}
 	

@@ -19,6 +19,9 @@ struct node {
 	struct node * next;
 };
 
+int numFiles;
+int versionNum;
+
 int regularFileOrDirectory(const char* path){
 	struct stat fileStat;
 	if(stat(path, &fileStat) < 0){
@@ -113,7 +116,7 @@ struct node* removeFileFromList(char* filePath, struct node * head){
 struct node* createManifestList(char * manifestPath, struct node * head){
 	FILE *fp;
 	char str[256];
-	int version;
+	int version, num, vNum;
 	char filePath[256];
 	char hashcode[256];
 	fp = fopen(manifestPath, "r");	
@@ -121,6 +124,9 @@ struct node* createManifestList(char * manifestPath, struct node * head){
      	  perror("Error opening file");
      	  return 0;
   	}
+	fscanf(fp, "%d\t%d", &num, &vNum);
+	numFiles = num;
+	versionNum = vNum;
 	while(fscanf(fp, "%d %s %s", &version, filePath, hashcode) != EOF){
 		head = addFileToList(version, filePath, hashcode, head);
 	}
@@ -128,7 +134,7 @@ struct node* createManifestList(char * manifestPath, struct node * head){
 	return head;
 }
 
-void writeToManifest(char* manifestPath, struct node * head){
+void writeToManifest(char* manifestPath, struct node * head, int add){
 	FILE *fp;
 	struct node * current = head;
 	fp = fopen(manifestPath , "w");	
@@ -136,6 +142,7 @@ void writeToManifest(char* manifestPath, struct node * head){
      	  perror("Error opening file");
      	  return;
   	}
+	fprintf(fp,"%d\t%d\n", numFiles + add, versionNum);
 	while(current != NULL){
 	   fprintf(fp, "%d\t%s\t%s\n", current->version, current->filePath, current->hashcode);
 	   current = current->next;
@@ -178,7 +185,7 @@ void addCommand(char* filePath, char* manifestPath){
 	free(stream);
 	int closeStatus = close(fileDesc);
 	head = addFileToList(1,filePath,hashcode, head);
-	writeToManifest(manifestPath, head);
+	writeToManifest(manifestPath, head, 1);
 }
 
 void removeCommand(char* filePath, char* manifestPath){
@@ -186,7 +193,7 @@ void removeCommand(char* filePath, char* manifestPath){
 	struct node * head;
 	head = createManifestList(manifestPath, head);
 	head = removeFileFromList(filePath, head);
-	writeToManifest(manifestPath, head);
+	writeToManifest(manifestPath, head, -1);
 }
 
 
@@ -228,7 +235,6 @@ int create(char * name, int sock){
 	int remaining = size;
 	int written;
 	while( (remaining > 0) && ((written = recv(sock, buffer, 1000, 0)) > 0) ){
-		printf("haha\n");
 		write(fd, buffer, written);
 		remaining = remaining - written;
 		printf("%d remaining\n", remaining);
@@ -243,7 +249,96 @@ int destroy(char * name, int sock){
 	send(sock, name, strlen(name), 0);
 	char buffer[1000];
 	recv(sock, buffer, 1000, 0);
-	printf("%s\n", buffer);
+	if(strcmp(buffer, "error") == 0){
+		printf("This project does not exist on the server\n");
+	}else{
+		printf("Success\n");
+	}
+	return 0;
+}
+int makeDirectories(char * dir){
+	char * test = malloc(strlen(dir) + 1);
+	strcpy(test, "./\0");
+	printf("making directories for %s\n", dir);
+	int i;
+	for(i = 2; i < strlen(dir); i++){
+		if(dir[i] == '/'){
+			struct stat st = {0};
+			if (stat(test, &st) == -1) {
+				printf("making this directory %s\n", test);
+				mkdir(test, 0700);
+			}
+		}
+		char c = dir[i];
+		strcat(test, &c);
+	}
+}
+
+int checkout(char * name, int sock){
+	char * projDir = malloc(3 + strlen(name));
+	strcpy(projDir, "./\0");
+	strcat(projDir, name);
+	
+	struct stat st = {0};
+	if (stat(projDir, &st) == -1) {
+		mkdir(projDir, 0700);
+	}else{
+		printf("Project already exists in local, please delete local copy of this project and use checkout again\n");
+		return 0;
+	}
+	send(sock, "checkout", 8, 0);
+	sleep(1);
+	send(sock, name, strlen(name), 0);
+	char buffer[1000];
+	recv(sock, buffer, 20, 0);
+	if(strcmp(buffer, "error") == 0){
+		printf("This project does not exists on the server");
+		return 0;
+	}
+	int num = atoi(buffer);
+	int size;
+	int i = 1;
+	for(i = 1; i <= num; i++){
+		char directory[1000];
+		recv(sock, directory, 1000, 0);
+		char * file = malloc(strlen(projDir) + strlen(directory) + 1);
+		strcpy(file, projDir);
+		strcat(file, "/\0");
+		strcat(file, directory);
+		makeDirectories(file);
+		recv(sock, buffer, 1000, 0);
+		printf("writing to %s\n", file);
+		size = atoi(buffer);
+		int remaining = size;
+		int written;
+		printf("size is %d\n", size);
+		int fd = open(file, O_CREAT | O_RDWR | O_TRUNC, S_IWUSR | S_IRUSR);
+		char inc[1000];
+		while( (remaining > 0) && ((written = recv(sock, inc, size, 0)) > 0) ){
+			printf("haha\n");
+			write(fd, inc, written);
+			remaining = remaining - written;
+			printf("%d remaining\n", remaining);
+		}
+		close(fd);
+	}
+	recv(sock, buffer, 1000, 0);
+	printf("manifest is this big %s\n", buffer);
+	size = atoi(buffer);
+	int left = size;
+	int received;
+	char * manifest = malloc(strlen(projDir) + 12);
+	strcpy(manifest, projDir);
+	strcat(manifest, "/.Manifest");
+	int fd = open(manifest, O_CREAT | O_RDWR | O_TRUNC, S_IWUSR | S_IRUSR);
+	char incoming[1000];
+	
+	while( (left > 0) && ((received = recv(sock, incoming, size, 0)) > 0) ){
+		write(fd, incoming, received);
+		left = left - received;
+		printf("%d remaining\n", left);
+	}
+	close(fd);
 	return 0;
 }
 
@@ -256,6 +351,12 @@ int main(int argc, char ** argv){
 	}
 	char * name = malloc(strlen(argv[3]) + 1);
 	strcpy(name, argv[3]);
+	
+	if(strcmp(name, "projects") == 0){
+		printf("projects is an invalid project name because the server files are stored in a directory named \"projects\"\n");
+		return 0;
+	}
+	
 	if(strcmp(command, "remove") == 0 || strcmp(command, "add") == 0){
 		char *manifestPath;
 		char *filePath;
@@ -301,6 +402,8 @@ int main(int argc, char ** argv){
 		create(name, socketfd);
 	}else if(strcmp(command, "destroy") == 0){
 		destroy(name, socketfd);
+	}else if(strcmp(command, "checkout") == 0){
+		checkout(name, socketfd);
 	}else{
 		printf("Invalid command given.\n");
 	}
