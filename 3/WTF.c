@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
@@ -164,7 +165,7 @@ char * createHashcode(char * fileStream, size_t length, char* buffer){
 	return buffer;
 }
 
-void addCommand(char* filePath, char* manifestPath){
+void addCommand(char* filePath, char* filePathWithoutProj, char* manifestPath){
 	// get linked list of manifest file
 	struct node * head;
 	head = createManifestList(manifestPath, head);
@@ -184,15 +185,15 @@ void addCommand(char* filePath, char* manifestPath){
 	strcpy(hashcode, createHashcode(stream, length, hashcode));
 	free(stream);
 	int closeStatus = close(fileDesc);
-	head = addFileToList(1,filePath,hashcode, head);
+	head = addFileToList(1,filePathWithoutProj,hashcode, head);
 	writeToManifest(manifestPath, head, 1);
 }
 
-void removeCommand(char* filePath, char* manifestPath){
+void removeCommand(char * filePathWithoutProj, char* manifestPath){
 	// get linked list of manifest file
 	struct node * head;
 	head = createManifestList(manifestPath, head);
-	head = removeFileFromList(filePath, head);
+	head = removeFileFromList(filePathWithoutProj, head);
 	writeToManifest(manifestPath, head, -1);
 }
 
@@ -373,9 +374,9 @@ int main(int argc, char ** argv){
 		strcpy(manifestPath, name);
 		strcat(manifestPath, "/.Manifest");
 		if(strcmp(command, "add") == 0){
-			addCommand(filePath, manifestPath);
+			addCommand(filePath, argv[4], manifestPath);
 		}else if(strcmp(command, "remove") == 0){
-			removeCommand(filePath, manifestPath);
+			removeCommand(argv[4], manifestPath);
 		}
 		return 0;
 	}
