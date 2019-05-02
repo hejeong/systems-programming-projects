@@ -65,6 +65,44 @@ struct node* addFileToList(int version, char* filePath, char* hashcode, struct n
 	}
 	return head;
 }
+void printList(struct node * head){
+	struct node * current = head;
+	while(current != NULL){
+	   printf("%d %s %s\n", current->version, current->filePath, current->hashcode);
+	   current = current->next;
+	}
+}
+struct node* removeFileFromList(char* filePath, struct node * head){
+	struct node * prev = head;
+	struct node * current = head;
+	while(current != NULL){
+		if(strcmp(current->filePath, filePath) == 0){
+			if(current == head){
+				prev = current->next;
+				current->next = NULL;
+				free(current->filePath);
+				free(current->hashcode);
+				free(current);
+				return prev;
+			}else{
+				prev->next = current->next;
+				current->next = NULL;
+				free(current->filePath);
+				free(current->hashcode);
+				free(current);
+				return head;
+			}
+		}
+		if(current->next != NULL){
+			prev = current;
+			current = current->next;
+		}else{
+			printf("File does not exist in manifest.\n");
+			break;
+		}
+	}
+	return head;
+}
 
 struct node* createManifestList(char * manifestPath, struct node * head){
 	FILE *fp;
@@ -84,11 +122,6 @@ struct node* createManifestList(char * manifestPath, struct node * head){
 	return head;
 }
 
-void printList(struct node * head){
-	struct node * current = head;
-	
-}
-
 void writeToManifest(char* manifestPath, struct node * head){
 	FILE *fp;
 	struct node * current = head;
@@ -98,31 +131,12 @@ void writeToManifest(char* manifestPath, struct node * head){
      	  return;
   	}
 	while(current != NULL){
-	   fprintf(fp, "%d %s %s\n", current->version, current->filePath, current->hashcode);
+	   fprintf(fp, "%d\t%s\t%s\n", current->version, current->filePath, current->hashcode);
 	   current = current->next;
 	}
 	fclose(fp);
 }
-
-int main(int argc, char** argv){
-	char *manifestPath;
-	char *filePath;
-	manifestPath = (char*)malloc((strlen(argv[1])+strlen("manifest")+2)*sizeof(char));
-	filePath = (char*)malloc((strlen(argv[1])+strlen(argv[2])+2)*sizeof(char));
-	int fileType = regularFileOrDirectory(argv[1]);
-	if(fileType != 0){
-	  printf("Invalid project name\n");
-	  return 1;
-	}
-	strcpy(filePath, argv[1]);
-	strcat(filePath, "/");
-	strcat(filePath, argv[2]);
-
-	strcpy(manifestPath, argv[1]);
-	strcat(manifestPath, "/.Manifest");
-
-
-
+void addCommand(char* filePath, char* manifestPath){
 	// get linked list of manifest file
 	struct node * head;
 	head = createManifestList(manifestPath, head);
@@ -138,7 +152,7 @@ int main(int argc, char** argv){
 	int fileDesc = open(filePath, O_RDONLY);
 	if(fileDesc == -1){
  	  perror("Error opening file");
-     	  return(-1);
+     	  return;
 	}
 	char* stream = malloc((fileBytes+1)*sizeof(char));
 	read(fileDesc, stream, fileBytes);
@@ -153,8 +167,41 @@ int main(int argc, char** argv){
 	free(stream);
 	int closeStatus = close(fileDesc);
 	head = addFileToList(1,filePath,buffer, head);
-	printList(head);
 	writeToManifest(manifestPath, head);
+}
+
+void removeCommand(char* filePath, char* manifestPath){
+	// get linked list of manifest file
+	struct node * head;
+	head = createManifestList(manifestPath, head);
+	head = removeFileFromList(filePath, head);
+	writeToManifest(manifestPath, head);
+}
+
+int main(int argc, char** argv){
+	char *manifestPath;
+	char *filePath;
+	manifestPath = (char*)malloc((strlen(argv[2])+strlen("manifest")+2)*sizeof(char));
+	filePath = (char*)malloc((strlen(argv[2])+strlen(argv[3])+2)*sizeof(char));
+	int fileType = regularFileOrDirectory(argv[2]);
+	if(fileType != 0){
+		printf("Invalid project name\n");
+		return 1;
+	}
+	strcpy(filePath, argv[2]);
+	strcat(filePath, "/");
+	strcat(filePath, argv[3]);
+
+	strcpy(manifestPath, argv[2]);
+	strcat(manifestPath, "/.Manifest");
+	if(strcmp(argv[1], "add") == 0){
+		addCommand(filePath, manifestPath);
+	}else if(strcmp(argv[1], "remove") == 0){
+		removeCommand(filePath, manifestPath);
+	}else{
+		printf("No command given.\n");
+	}
+
 
 	return 0;
 }
