@@ -251,6 +251,34 @@ int main(int argc, char ** argv){
 	int port = atoi(argv[1]);
 	char * command = malloc(strlen(argv[2]) + 1);
 	strcpy(command, argv[2]);
+	if(strcmp(command, "configure") == 0){
+		return 0;
+	}
+	char * name = malloc(strlen(argv[3]) + 1);
+	strcpy(name, argv[3]);
+	if(strcmp(command, "remove") == 0 || strcmp(command, "add") == 0){
+		char *manifestPath;
+		char *filePath;
+		manifestPath = (char*)malloc((strlen(name)+strlen("manifest")+2)*sizeof(char));
+		filePath = (char*)malloc((strlen(name)+strlen(argv[4])+2)*sizeof(char));
+		int fileType = regularFileOrDirectory(name);
+		if(fileType != 0){
+			printf("Invalid project name\n");
+			return 1;
+		}
+		strcpy(filePath, name);
+		strcat(filePath, "/");
+		strcat(filePath, argv[4]);
+		strcpy(manifestPath, name);
+		strcat(manifestPath, "/.Manifest");
+		if(strcmp(command, "add") == 0){
+			addCommand(filePath, manifestPath);
+		}else if(strcmp(command, "remove") == 0){
+			removeCommand(filePath, manifestPath);
+		}
+		return 0;
+	}
+	
 	struct sockaddr_in address;
 	memset(&address, 0, sizeof(address));
 	
@@ -262,27 +290,6 @@ int main(int argc, char ** argv){
 	if (socketfd <= 0){
 		printf("ERROR: Failed to open socket.\n");
 	}
-	
-	char * name = malloc(strlen(argv[3]) + 1);
-	strcpy(name, argv[3]);
-
-	/* ---------- Used for Add and Remove etc.----------- */
-	char *manifestPath;
-	char *filePath;
-	manifestPath = (char*)malloc((strlen(name)+strlen("manifest")+2)*sizeof(char));
-	filePath = (char*)malloc((strlen(name)+strlen(argv[4])+2)*sizeof(char));
-	int fileType = regularFileOrDirectory(name);
-	if(fileType != 0){
-		printf("Invalid project name\n");
-		return 1;
-	}
-	strcpy(filePath, name);
-	strcat(filePath, "/");
-	strcat(filePath, argv[4]);
-	strcpy(manifestPath, name);
-	strcat(manifestPath, "/.Manifest");
-	/* ---------------------------------------------------*/
-
 
 	if (connect(socketfd, (struct sockaddr *) &address, sizeof(address)) < 0)
 	{
@@ -294,12 +301,8 @@ int main(int argc, char ** argv){
 		create(name, socketfd);
 	}else if(strcmp(command, "destroy") == 0){
 		destroy(name, socketfd);
-	}else if(strcmp(command, "add") == 0){
-		addCommand(filePath, manifestPath);
-	}else if(strcmp(command, "remove") == 0){
-		removeCommand(filePath, manifestPath);
 	}else{
-		printf("No command given.\n");
+		printf("Invalid command given.\n");
 	}
 
 	
