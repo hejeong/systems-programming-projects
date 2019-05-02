@@ -128,14 +128,12 @@ int destroy(char * currentDir){
 			char* newPath = (char*)malloc((strlen(path)+2)*sizeof(char));
 			strcpy(newPath, path);
 			strcat(newPath, "/");
-			printf("dir %s\n", currentDir);
 			destroy(newPath);
 			free(newPath);
 			continue;
 		}else if(typeInt == 1){
 			// tokenize file and add tokens to linked list, keeping track of frequency
 			fileType = "Regular File";
-			printf("file %s\n", currentDir);
 			remove(path);
 			continue;
 		}else {
@@ -143,9 +141,8 @@ int destroy(char * currentDir){
 		}
 		free(path);
 	}
-	remove(currentDir);
-	// close the current directory
 	closedir(dir);
+	remove(currentDir);
 }
 
 int sendAll(char * dir, int sock){
@@ -243,6 +240,40 @@ int checkout(char * dirp, int sock, char * name){
 	return 0;
 }
 
+int rollback(char * name, int sock){
+	char version[100];
+	recv(sock, version, 100, 0);
+	char * projDir = malloc(strlen(name) + 14);
+	strcpy(projDir, "./projects/\0");
+	strcat(projDir, name);
+	int ver = atoi(version);
+	
+	DIR *dir;
+	struct dirent *dent;
+	//open directory
+	dir = opendir(projDir);
+	//graceful error if dir can't be opened
+	if(dir == NULL){
+		printf("Directory %s cannot be opened\n", projDir);
+		return;
+	}
+	while((dent = readdir(dir)) != NULL){
+		// skip over [.] and [..]
+		if(!strcmp(".", dent->d_name) || !strcmp("..", dent->d_name)){
+			continue;	
+		}
+		int check = atoi(dent->d_name);
+		if(check > ver){
+			char * delete = malloc(strlen(projDir) + strlen(dent->d_name) + 3);
+			strcpy(delete, projDir);
+			strcat(delete, "/\0");
+			strcat(delete, dent->d_name);
+			destroy(delete);
+		}
+	}
+	send(sock, "success\0", 30, 0);
+}
+
 int main(int argc, char** argv){
 	struct sockaddr_in address;
 	int list = socket(AF_INET,SOCK_STREAM,0);
@@ -289,8 +320,12 @@ int main(int argc, char** argv){
 		recv(comm, command, 50, 0);
 		char name[2000];
 		recv(comm, name, 2000, 0);
-		
-		printf("client wants to %s %s\n", command, name);
+		if(strcmp(command, "invalid") == 0){
+			printf("client has input an invalid command\n");
+			continue;
+		}else{
+			printf("client wants to %s %s\n", command, name);
+		}
 		
 		struct stat st1 = {0};
 		if (stat("./projects", &st1) == -1) {
@@ -309,16 +344,13 @@ int main(int argc, char** argv){
 				printf("project does not exist on server\n");
 				send(comm, "error\0", 50, 0);
 				close(comm);
-				close(list);
-				
-				return 0;
-			}
-			
-			if(strcmp(command, "destroy") == 0){
+			}else if(strcmp(command, "destroy") == 0){
 				destroy(projDir);
 				send(comm, "success\0", 8, 0);
 			}else if(strcmp(command, "checkout") == 0){
 				checkout(projDir, comm, name);
+			}else if(strcmp(command, "rollback") == 0){
+				rollback(name, comm);
 			}
 		}
 	}

@@ -203,9 +203,9 @@ void removeCommand(char * filePathWithoutProj, char* manifestPath){
 
 int create(char * name, int sock){
 	
-	send(sock, "create", 6, 0);
+	send(sock, "create", 50, 0);
 	sleep(1);
-	send(sock, name, strlen(name), 0);
+	send(sock, name, 2000, 0);
 	char buffer[1000];
 	recv(sock, buffer, 1000, 0);
 	int size = atoi(buffer);
@@ -244,15 +244,15 @@ int create(char * name, int sock){
 }
 
 int destroy(char * name, int sock){
-	send(sock, "destroy", 7, 0);
+	send(sock, "destroy", 50, 0);
 	sleep(1);
-	send(sock, name, strlen(name), 0);
+	send(sock, name, 2000, 0);
 	char buffer[1000];
 	recv(sock, buffer, 1000, 0);
 	if(strcmp(buffer, "error") == 0){
 		printf("This project does not exist on the server\n");
 	}else{
-		printf("Success\n");
+		printf("Successfully destroyed project: %s\n", name);
 	}
 	return 0;
 }
@@ -286,9 +286,9 @@ int checkout(char * name, int sock){
 		printf("Project already exists in local, please delete local copy of this project and use checkout again\n");
 		return 0;
 	}
-	send(sock, "checkout", 8, 0);
+	send(sock, "checkout", 50, 0);
 	sleep(1);
-	send(sock, name, strlen(name), 0);
+	send(sock, name, 2000, 0);
 	char buffer[1000];
 	recv(sock, buffer, 20, 0);
 	if(strcmp(buffer, "error") == 0){
@@ -339,6 +339,21 @@ int checkout(char * name, int sock){
 		printf("%d remaining\n", left);
 	}
 	close(fd);
+	return 0;
+}
+
+int rollback(char * name, int sock, char * version){
+	send(sock, "rollback", 50, 0);
+	sleep(1);
+	send(sock, name, 2000, 0);
+	send(sock, version, 100, 0);
+	char buffer[30];
+	recv(sock, buffer, 30, 0);
+	if(strcmp(buffer, "error") == 0){
+		printf("This project does not exist on the server\n");
+	}else{
+		printf("Successfully rolled back\n");
+	}
 	return 0;
 }
 
@@ -404,7 +419,10 @@ int main(int argc, char ** argv){
 		destroy(name, socketfd);
 	}else if(strcmp(command, "checkout") == 0){
 		checkout(name, socketfd);
+	}else if(strcmp(command, "rollback") == 0){
+		rollback(name, socketfd, argv[4]);
 	}else{
+		send(comm, "invalid", 50, 0);
 		printf("Invalid command given.\n");
 	}
 
