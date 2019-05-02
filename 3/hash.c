@@ -36,15 +36,27 @@ int getFileSizeInBytes(const char* path){
 
 struct node* addFileToList(int version, char* filePath, char* hashcode, struct node* head){
 	struct node * current = head;
-	if(head != NULL){
-		while(current->next != NULL){
+	while(current != NULL){
+		if(strcmp(current->filePath, filePath) == 0 && strcmp(current->hashcode, hashcode) != 0){
+			printf("File already exists. Changes were made.\n");
+			strcpy(current->hashcode, hashcode);
+			return head;
+		}else if(strcmp(current->filePath, filePath) == 0 ){
+			printf("File already exists. No changes were made.\n");
+			return head;
+		}
+		if(current->next != NULL){
 			current = current->next;
+		}else{
+			break;
 		}
 	}
 	struct node *newNode = (struct node *) malloc(sizeof(struct node));
 	newNode->version = version;
-	newNode->filePath = filePath;
-	newNode->hashcode = hashcode;
+	newNode->filePath = malloc((strlen(filePath) + 1)*sizeof(char));
+	newNode->hashcode = malloc((strlen(hashcode) + 1)*sizeof(char));
+	strcpy(newNode->filePath, filePath);
+	strcpy(newNode->hashcode, hashcode);
 	newNode->next = NULL; 
 	if(head == NULL){
 		head = newNode;
@@ -57,31 +69,42 @@ struct node* addFileToList(int version, char* filePath, char* hashcode, struct n
 struct node* createManifestList(char * manifestPath, struct node * head){
 	FILE *fp;
 	char str[256];
-	char version[100];
+	int version;
 	char filePath[256];
 	char hashcode[256];
-	printf("%s\n", manifestPath);
 	fp = fopen(manifestPath, "r");	
 	if(fp == NULL) {
      	  perror("Error opening file");
      	  return 0;
   	}
-	while(fscanf(fp, "%d %s %s", version, filePath, hashcode) != EOF){
+	while(fscanf(fp, "%d %s %s", &version, filePath, hashcode) != EOF){
 		head = addFileToList(version, filePath, hashcode, head);
 	}
 	fclose(fp);
+	return head;
 }
 
 void printList(struct node * head){
 	struct node * current = head;
+	
+}
+
+void writeToManifest(char* manifestPath, struct node * head){
+	FILE *fp;
+	struct node * current = head;
+	fp = fopen(manifestPath , "w");	
+	if(fp == NULL) {
+     	  perror("Error opening file");
+     	  return;
+  	}
 	while(current != NULL){
-	   printf("%d %s %s\n", current->version, current->filePath, current->hashcode);
+	   fprintf(fp, "%d %s %s\n", current->version, current->filePath, current->hashcode);
 	   current = current->next;
 	}
+	fclose(fp);
 }
 
 int main(int argc, char** argv){
-	FILE *fp;
 	char *manifestPath;
 	char *filePath;
 	manifestPath = (char*)malloc((strlen(argv[1])+strlen("manifest")+2)*sizeof(char));
@@ -103,7 +126,6 @@ int main(int argc, char** argv){
 	// get linked list of manifest file
 	struct node * head;
 	head = createManifestList(manifestPath, head);
-	printList(head);
 
 	size_t length;
 	int i = 0;
@@ -125,19 +147,14 @@ int main(int argc, char** argv){
 	SHA256(stream, length, hash);
 	strcpy(buffer, "");
 	for(i = 0; i < SHA256_DIGEST_LENGTH; i++){
-        	sprintf(shaConverted, "%02x", hash[i]);
+        sprintf(shaConverted, "%02x", hash[i]);
 		strcat(buffer, shaConverted);
 	}	
 	free(stream);
 	int closeStatus = close(fileDesc);
-	
-	fp = fopen(manifestPath , "a+");	
-	if(fp == NULL) {
-     	  perror("Error opening file");
-     	  return(-1);
-  	}
-	fprintf(fp, "1 %s %s\n", filePath, buffer);
-	fclose(fp);
+	head = addFileToList(1,filePath,buffer, head);
+	printList(head);
+	writeToManifest(manifestPath, head);
 
 	return 0;
 }
