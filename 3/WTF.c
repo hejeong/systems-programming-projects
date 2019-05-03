@@ -446,15 +446,12 @@ int checkout(char * name, int sock){
 		int fd = open(file, O_CREAT | O_RDWR | O_TRUNC, S_IWUSR | S_IRUSR);
 		char inc[1000];
 		while( (remaining > 0) && ((written = recv(sock, inc, size, 0)) > 0) ){
-			printf("haha\n");
 			write(fd, inc, written);
 			remaining = remaining - written;
-			printf("%d remaining\n", remaining);
 		}
 		close(fd);
 	}
 	recv(sock, buffer, 1000, 0);
-	printf("manifest is this big %s\n", buffer);
 	size = atoi(buffer);
 	int left = size;
 	int received;
@@ -467,7 +464,6 @@ int checkout(char * name, int sock){
 	while( (left > 0) && ((received = recv(sock, incoming, size, 0)) > 0) ){
 		write(fd, incoming, received);
 		left = left - received;
-		printf("%d remaining\n", left);
 	}
 	close(fd);
 	return 0;
@@ -550,13 +546,14 @@ int main(int argc, char ** argv){
 		return 0;
 	}
 	char ip[25];
-	char port[10];
+	int port;
+	fscanf(fd, "%s\t%d", ip, &port);
 	struct sockaddr_in address;
 	memset(&address, 0, sizeof(address));
 	
 	address.sin_family = AF_INET;
 	address.sin_port = htons(port);
-	//addr.sin_addr.s_addr = inet_addr("128.6.13.172");
+	//addr.sin_addr.s_addr = inet_addr(ip);
 
 	int socketfd = socket(AF_INET,SOCK_STREAM, 0);
 	if (socketfd <= 0){

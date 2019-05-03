@@ -16,6 +16,12 @@ struct node{
 	char * name;
 	struct node * next;
 };
+
+struct multiArgs{
+	char * name;
+	char * dir;
+	int socket;
+};
 pthread_mutex_t masterLock;
 struct node * keychain;
 
@@ -33,11 +39,18 @@ int regularFileOrDirectory(const char* path){
 	}
 }
 
-int create(char * projDir, int sock, char * name){
+void * create(void * tArgs){
 	if(pthread_mutex_lock(&masterLock) != 0){
 		printf("broken thread lock\n");
-		return 0;
+		return NULL;
 	}
+	struct multiArgs * args = (struct multiArgs *) tArgs;
+	char * projDir = malloc(strlen(args->dir) + 1);
+	char * name = malloc(strlen(args->name) + 1);
+	int sock = args->socket;
+	
+	strcpy(projDir, args->dir);
+	strcpy(name, args->name);
 	
 	struct stat st = {0};
 	if (stat(projDir, &st) == -1) {
@@ -45,7 +58,8 @@ int create(char * projDir, int sock, char * name){
 	}else{
 		printf("project already exists\n");
 		send(sock, "0", 1, 0);
-		return 0;
+		pthread_mutex_unlock(&masterLock);
+		return NULL;
 	}
 	
 	struct node * ptr = malloc(sizeof(struct node));
@@ -62,11 +76,13 @@ int create(char * projDir, int sock, char * name){
 	char * manifest = malloc(12 + strlen(verDir));
 	strcpy(manifest, verDir);
 	strcat(manifest, "/.Manifest");
+	printf("%s\n", manifest);
 	int fd = open(manifest, O_CREAT | O_RDWR | O_TRUNC, S_IRWXU | S_IRWXG);
 	if(fd == -1){
-		printf("unable to write\n");
+		printf("unable to write manifest\n");
+		send(sock, "0", 1, 0);
 		pthread_mutex_unlock(&masterLock);
-		return 0;
+		return NULL;
 	}
 	write(fd, "0\t1\n", 4);
 	
@@ -75,14 +91,12 @@ int create(char * projDir, int sock, char * name){
 	fstat(fd, &fileStat);
 	sprintf(fileSize, "%d", fileStat.st_size);
 	send(sock, fileSize, strlen(fileSize), 0);
-	printf("sent %s    length %d\n", fileSize, strlen(fileSize));
 	sleep(1);
 	int sent;
 	int remaining = fileStat.st_size;
 	close(fd);
 	fd = open(manifest, O_RDONLY);
 	while( (remaining > 0) && ((sent = sendfile(sock, fd, NULL, 1000)) > 0) ){
-		printf("sent %d\n", sent);
 		remaining = remaining - sent;
 	}
 	
@@ -90,24 +104,21 @@ int create(char * projDir, int sock, char * name){
 	close(fd);
 	
 	pthread_mutex_unlock(&masterLock);
-	return 0;
+	return NULL;
 }
 
-int destroy(char * name, char * currentDir){
+void * destroy(char * currentDir){
 	DIR *dir;
 	struct dirent *dent;
 	char buffer[1000];
 	char *path;
-	if(name != NULL){
-		//lock
-	}
 	strcpy(buffer, currentDir);
 	//open directory
 	dir = opendir(buffer);
 	//graceful error if dir can't be opened
 	if(dir == NULL){
 		printf("Directory %s cannot be opened\n", currentDir);
-		return;
+		return NULL;
 	}
 	while((dent = readdir(dir)) != NULL){
 		// skip over [.] and [..]
@@ -130,7 +141,7 @@ int destroy(char * name, char * currentDir){
 			char* newPath = (char*)malloc((strlen(path)+2)*sizeof(char));
 			strcpy(newPath, path);
 			strcat(newPath, "/");
-			destroy(NULL, newPath);
+			destroy(newPath);
 			free(newPath);
 			continue;
 		}else if(typeInt == 1){
@@ -145,10 +156,45 @@ int destroy(char * name, char * currentDir){
 	}
 	closedir(dir);
 	remove(currentDir);
-	if(name != NULL){
-		//unlock
+	return NULL;
+}
+
+void * destroyP(void * tArgs){
+	if(pthread_mutex_lock(&masterLock) != 0){
+		printf("broken thread lock\n");
+		return NULL;
 	}
-	return 0;
+
+	struct multiArgs * args = (struct multiArgs *) tArgs;
+	char * projDir = malloc(strlen(args->dir) + 1);
+	char * name = malloc(strlen(args->name) + 1);
+	int sock = args->socket;
+	
+	strcpy(projDir, args->dir);
+	strcpy(name, args->name);
+	
+	int locked = 0;
+	struct node * ptr = keychain;
+	while(ptr != NULL){
+		if(strcmp(ptr->name, name) == 0){
+			if(pthread_mutex_lock(&(ptr->lock)) != 0){
+				printf("unable to lock this project\n");
+				send(sock, "error\0", 8, 0);
+				pthread_mutex_unlock(&masterLock);
+				return NULL;
+			}
+			locked = 1;
+			break;
+		}
+	}
+	if(locked != 1){
+		printf("Could not find the lock for this project\n");
+	}
+	destroy(projDir);
+	send(sock, "success\0", 8, 0);
+	pthread_mutex_unlock(&(ptr->lock));
+	pthread_mutex_unlock(&masterLock);
+	return NULL;
 }
 
 int sendAll(char * dir, int sock){
@@ -184,11 +230,9 @@ int sendAll(char * dir, int sock){
 		sprintf(fileSize, "%d", fileStat.st_size);
 		strcat(fileSize, "\0");
 		send(sock, fileSize, 1000, 0); //sends the size of file
-		printf("I said file is this big %s\n", fileSize);
 		int sent;
 		int remaining = fileStat.st_size;
 		while( (remaining > 0) && ((sent = sendfile(sock, currentFd, NULL, 1000)) > 0) ){
-			printf("sent %d\n", sent);
 			remaining = remaining - sent;
 		}
 		close(currentFd);
@@ -206,13 +250,38 @@ int sendAll(char * dir, int sock){
 	int msent;
 	int mremaining = mfileStat.st_size;
 	while( (mremaining > 0) && ((msent = sendfile(sock, mfd, NULL, 1000)) > 0) ){
-		printf("sent %d\n", msent);
 		mremaining = mremaining - msent;
 	}
 	return 0; 
 }
 
-int checkout(char * dirp, int sock, char * name){
+void * checkout(void * tArgs){
+	struct multiArgs * args = (struct multiArgs *) tArgs;
+	char * dirp = malloc(strlen(args->dir) + 1);
+	char * name = malloc(strlen(args->name) + 1);
+	int sock = args->socket;
+	
+	strcpy(dirp, args->dir);
+	strcpy(name, args->name);
+	
+	int locked = 0;
+	struct node * ptr = keychain;
+	while(ptr != NULL){
+		if(strcmp(ptr->name, name) == 0){
+			if(pthread_mutex_lock(&(ptr->lock)) != 0){
+				printf("unable to lock this project\n");
+				send(sock, "0\0", 8, 0);
+				return NULL;
+			}
+			locked = 1;
+			break;
+		}
+	}
+	
+	if(locked != 1){
+		printf("Could not find the lock for this project\n");
+	}
+	
 	DIR *dir;
 	struct dirent *dent;
 	int ver = 1;
@@ -221,7 +290,7 @@ int checkout(char * dirp, int sock, char * name){
 	//graceful error if dir can't be opened
 	if(dir == NULL){
 		printf("Directory %s cannot be opened\n", dirp);
-		return;
+		return NULL;
 	}
 	//finds the latest version number
 	while((dent = readdir(dir)) != NULL){
@@ -243,10 +312,34 @@ int checkout(char * dirp, int sock, char * name){
 	strcat(projDir, version);
 	strcat(projDir, "/\0");
 	sendAll(projDir, sock);
-	return 0;
+	pthread_mutex_unlock(&(ptr->lock));
+	return NULL;
 }
 
-int rollback(char * name, int sock){
+void * rollback(void * tArgs){
+	struct multiArgs * args = (struct multiArgs *) tArgs;
+	char * name = malloc(strlen(args->name) + 1);
+	int sock = args->socket;
+	
+	strcpy(name, args->name);
+	
+	int locked = 0;
+	struct node * ptr = keychain;
+	while(ptr != NULL){
+		if(strcmp(ptr->name, name) == 0){
+			if(pthread_mutex_lock(&(ptr->lock)) != 0){
+				printf("unable to lock this project\n");
+				return NULL;
+			}
+			locked = 1;
+			break;
+		}
+	}
+	
+	if(locked != 1){
+		printf("Could not find the lock for this project\n");
+		return NULL;
+	}
 	char version[100];
 	recv(sock, version, 100, 0);
 	char * projDir = malloc(strlen(name) + 14);
@@ -261,7 +354,7 @@ int rollback(char * name, int sock){
 	//graceful error if dir can't be opened
 	if(dir == NULL){
 		printf("Directory %s cannot be opened\n", projDir);
-		return;
+		return NULL;
 	}
 	while((dent = readdir(dir)) != NULL){
 		// skip over [.] and [..]
@@ -274,10 +367,12 @@ int rollback(char * name, int sock){
 			strcpy(delete, projDir);
 			strcat(delete, "/\0");
 			strcat(delete, dent->d_name);
-			destroy(NULL, delete);
+			destroy(delete);
 		}
 	}
 	send(sock, "success\0", 30, 0);
+	pthread_mutex_unlock(&(ptr->lock));
+	return NULL;
 }
 
 int main(int argc, char** argv){
@@ -343,20 +438,41 @@ int main(int argc, char** argv){
 		strcat(projDir, name);
 		
 		if(strcmp(command, "create") == 0){
-			create(projDir, comm, name);
+			struct multiArgs * args = malloc(sizeof(struct multiArgs));
+			args->name = malloc(strlen(name) + 1);
+			strcpy(args->name, name);
+			args->dir = malloc(strlen(projDir) + 1);
+			strcpy(args->dir, projDir);
+			args->socket = comm;
+			pthread_t id;
+			pthread_create(&id, NULL, create, (void *) args);
+			//create(projDir, comm, name);
 		}else{
 			struct stat st2 = {0};
 			if (stat(projDir, &st2) == -1) {
 				printf("project does not exist on server\n");
 				send(comm, "error\0", 50, 0);
 				close(comm);
-			}else if(strcmp(command, "destroy") == 0){
-				destroy(name, projDir);
-				send(comm, "success\0", 8, 0);
+				continue;
+			}
+			
+			struct multiArgs * args = malloc(sizeof(struct multiArgs));
+			args->name = malloc(strlen(name) + 1);
+			strcpy(args->name, name);
+			args->dir = malloc(strlen(projDir) + 1);
+			strcpy(args->dir, projDir);
+			args->socket = comm;
+			
+			if(strcmp(command, "destroy") == 0){
+				pthread_t id;
+				pthread_create(&id, NULL, destroyP, (void *) args);
+				//destroy(name, projDir);
 			}else if(strcmp(command, "checkout") == 0){
-				checkout(projDir, comm, name);
+				pthread_t id;
+				pthread_create(&id, NULL, checkout, (void *) args);
 			}else if(strcmp(command, "rollback") == 0){
-				rollback(name, comm);
+				pthread_t id;
+				pthread_create(&id, NULL, rollback, (void *) args);
 			}
 		}
 	}
