@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
@@ -209,6 +208,24 @@ char * createHashcode(char * fileStream, size_t length, char* buffer){
 		strcat(buffer, shaConverted);
 	}	
 	return buffer;
+}
+
+char * readFileAndHash(char* filePath, char* hashcode){
+	size_t length;
+	int fileBytes = getFileSizeInBytes(filePath);
+	int fileDesc = open(filePath, O_RDONLY);
+	if(fileDesc == -1){
+ 	  perror("Error opening file");
+     	  return;
+	}
+	char* stream = malloc((fileBytes+1)*sizeof(char));
+	read(fileDesc, stream, fileBytes);
+	stream[fileBytes] = '\0';
+	length = strlen(stream);
+	strcpy(hashcode, createHashcode(stream, length, hashcode));
+	free(stream);
+	int closeStatus = close(fileDesc);
+	return hashcode;
 }
 
 void addCommand(char* filePath, char* filePathWithoutProj, char* manifestPath){
