@@ -93,12 +93,14 @@ int create(char * projDir, int sock, char * name){
 	return 0;
 }
 
-int destroy(char * currentDir){
+int destroy(char * name, char * currentDir){
 	DIR *dir;
 	struct dirent *dent;
 	char buffer[1000];
 	char *path;
-	
+	if(name != NULL){
+		//lock
+	}
 	strcpy(buffer, currentDir);
 	//open directory
 	dir = opendir(buffer);
@@ -128,7 +130,7 @@ int destroy(char * currentDir){
 			char* newPath = (char*)malloc((strlen(path)+2)*sizeof(char));
 			strcpy(newPath, path);
 			strcat(newPath, "/");
-			destroy(newPath);
+			destroy(NULL, newPath);
 			free(newPath);
 			continue;
 		}else if(typeInt == 1){
@@ -143,6 +145,10 @@ int destroy(char * currentDir){
 	}
 	closedir(dir);
 	remove(currentDir);
+	if(name != NULL){
+		//unlock
+	}
+	return 0;
 }
 
 int sendAll(char * dir, int sock){
@@ -268,7 +274,7 @@ int rollback(char * name, int sock){
 			strcpy(delete, projDir);
 			strcat(delete, "/\0");
 			strcat(delete, dent->d_name);
-			destroy(delete);
+			destroy(NULL, delete);
 		}
 	}
 	send(sock, "success\0", 30, 0);
@@ -345,7 +351,7 @@ int main(int argc, char** argv){
 				send(comm, "error\0", 50, 0);
 				close(comm);
 			}else if(strcmp(command, "destroy") == 0){
-				destroy(projDir);
+				destroy(name, projDir);
 				send(comm, "success\0", 8, 0);
 			}else if(strcmp(command, "checkout") == 0){
 				checkout(projDir, comm, name);

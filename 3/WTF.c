@@ -357,15 +357,22 @@ int rollback(char * name, int sock, char * version){
 	return 0;
 }
 
+int configure(char * ip, char * port){
+	int fd = open("./.configure", O_CREAT | O_RDWR | O_TRUNC, S_IWUSR | S_IRUSR);
+	write(fd, ip, strlen(ip));
+	write(fd, "\t", 1);
+	write(fd, port, strlen(port));
+}
+
 int main(int argc, char ** argv){
-	int port = atoi(argv[1]);
-	char * command = malloc(strlen(argv[2]) + 1);
-	strcpy(command, argv[2]);
+	char * command = malloc(strlen(argv[1]) + 1);
+	strcpy(command, argv[1]);
 	if(strcmp(command, "configure") == 0){
+		configure(argv[2], argv[3]);
 		return 0;
 	}
-	char * name = malloc(strlen(argv[3]) + 1);
-	strcpy(name, argv[3]);
+	char * name = malloc(strlen(argv[2]) + 1);
+	strcpy(name, argv[2]);
 	
 	if(strcmp(name, "projects") == 0){
 		printf("projects is an invalid project name because the server files are stored in a directory named \"projects\"\n");
@@ -376,7 +383,7 @@ int main(int argc, char ** argv){
 		char *manifestPath;
 		char *filePath;
 		manifestPath = (char*)malloc((strlen(name)+strlen("manifest")+2)*sizeof(char));
-		filePath = (char*)malloc((strlen(name)+strlen(argv[4])+2)*sizeof(char));
+		filePath = (char*)malloc((strlen(name)+strlen(argv[3])+2)*sizeof(char));
 		int fileType = regularFileOrDirectory(name);
 		if(fileType != 0){
 			printf("Invalid project name\n");
@@ -384,23 +391,29 @@ int main(int argc, char ** argv){
 		}
 		strcpy(filePath, name);
 		strcat(filePath, "/");
-		strcat(filePath, argv[4]);
+		strcat(filePath, argv[3]);
 		strcpy(manifestPath, name);
 		strcat(manifestPath, "/.Manifest");
 		if(strcmp(command, "add") == 0){
-			addCommand(filePath, argv[4], manifestPath);
+			addCommand(filePath, argv[3], manifestPath);
 		}else if(strcmp(command, "remove") == 0){
-			removeCommand(argv[4], manifestPath);
+			removeCommand(argv[3], manifestPath);
 		}
 		return 0;
 	}
-	
+	FILE * fd = fopen("./.configure", "r");
+	if(fd == NULL){
+		printf("please run configure first\n");
+		return 0;
+	}
+	char ip[25];
+	char port[10];
 	struct sockaddr_in address;
 	memset(&address, 0, sizeof(address));
 	
 	address.sin_family = AF_INET;
 	address.sin_port = htons(port);
-	//addr.sin_addr.s_addr = inet_addr("1.1.1.1.1");
+	//addr.sin_addr.s_addr = inet_addr("128.6.13.172");
 
 	int socketfd = socket(AF_INET,SOCK_STREAM, 0);
 	if (socketfd <= 0){
@@ -420,9 +433,9 @@ int main(int argc, char ** argv){
 	}else if(strcmp(command, "checkout") == 0){
 		checkout(name, socketfd);
 	}else if(strcmp(command, "rollback") == 0){
-		rollback(name, socketfd, argv[4]);
+		rollback(name, socketfd, argv[3]);
 	}else{
-		send(comm, "invalid", 50, 0);
+		send(socketfd, "invalid", 50, 0);
 		printf("Invalid command given.\n");
 	}
 
