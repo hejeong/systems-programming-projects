@@ -13,14 +13,17 @@
 #include <openssl/sha.h>
 /* --------------- JON ADDED THESE ----------------*/
 struct node {
+	char * UMAD;
 	int version;
 	char * filePath;
 	char * hashcode;
 	struct node * next;
 };
-
 int numFiles;
 int versionNum;
+int versionNum_s;
+int numFiles_s;
+int updateNumFiles;
 
 int regularFileOrDirectory(const char* path){
 	struct stat fileStat;
@@ -43,24 +46,39 @@ int getFileSizeInBytes(const char* path){
 	return size;
 }
 
-struct node* addFileToList(int version, char* filePath, char* hashcode, struct node* head){
+struct node* addFileToList(int version, char* filePath, char* hashcode, struct node* head, char *UMAD){
 	struct node * current = head;
-	while(current != NULL){
-		if(strcmp(current->filePath, filePath) == 0 && strcmp(current->hashcode, hashcode) != 0){
-			printf("File already exists. Changes were made.\n");
-			strcpy(current->hashcode, hashcode);
-			return head;
-		}else if(strcmp(current->filePath, filePath) == 0 ){
-			printf("File already exists. No changes were made.\n");
-			return head;
+	if(UMAD == NULL){
+		while(current != NULL){
+			if(strcmp(current->filePath, filePath) == 0 && strcmp(current->hashcode, hashcode) != 0){
+				printf("File already exists. Changes were made.\n");
+				strcpy(current->hashcode, hashcode);
+				return head;
+			}else if(strcmp(current->filePath, filePath) == 0 ){
+				printf("File already exists. No changes were made.\n");
+				return head;
+			}
+			if(current->next != NULL){
+				current = current->next;
+			}else{
+				break;
+			}
 		}
-		if(current->next != NULL){
-			current = current->next;
-		}else{
-			break;
+	}else{
+		updateNumFiles++;
+		while(current != NULL){
+			if(current->next != NULL){
+				current = current->next;
+			}else{
+				break;
+			}
 		}
 	}
 	struct node *newNode = (struct node *) malloc(sizeof(struct node));
+	if(UMAD != NULL){
+		newNode->UMAD = malloc((strlen(UMAD)+1)*sizeof(char));
+		strcpy(newNode->UMAD, UMAD);
+	}
 	newNode->version = version;
 	newNode->filePath = malloc((strlen(filePath) + 1)*sizeof(char));
 	newNode->hashcode = malloc((strlen(hashcode) + 1)*sizeof(char));
@@ -74,13 +92,19 @@ struct node* addFileToList(int version, char* filePath, char* hashcode, struct n
 	}
 	return head;
 }
+
 void printList(struct node * head){
 	struct node * current = head;
 	while(current != NULL){
-	   printf("%d %s %s\n", current->version, current->filePath, current->hashcode);
+		if(current->UMAD == NULL){
+			printf("%d %s %s\n", current->version, current->filePath, current->hashcode);
+		}else {
+			printf("%s %d %s %s\n", current->UMAD, current->version, current->filePath, current->hashcode);
+		}
 	   current = current->next;
 	}
 }
+
 struct node* removeFileFromList(char* filePath, struct node * head){
 	struct node * prev = head;
 	struct node * current = head;
@@ -125,10 +149,18 @@ struct node* createManifestList(char * manifestPath, struct node * head){
      	  return 0;
   	}
 	fscanf(fp, "%d\t%d", &num, &vNum);
-	numFiles = num;
-	versionNum = vNum;
+	
+	int len = strlen(manifestPath);
+	char *last_two = &manifestPath[len-2];
+	if(strcmp(last_two, "_s") == 0){
+		numFiles_s = num;
+		versionNum_s = vNum;	
+	}else{
+		numFiles = num;
+		versionNum = vNum;
+	}
 	while(fscanf(fp, "%d %s %s", &version, filePath, hashcode) != EOF){
-		head = addFileToList(version, filePath, hashcode, head);
+		head = addFileToList(version, filePath, hashcode, head, NULL);
 	}
 	fclose(fp);
 	return head;
@@ -150,6 +182,22 @@ void writeToManifest(char* manifestPath, struct node * head, int add){
 	fclose(fp);
 }
 
+void writeToUpdate(char* updatePath, struct node * head){
+	FILE *fp;
+	struct node * current = head;
+	fp = fopen(updatePath , "w");	
+	if(fp == NULL) {
+     	  perror("Error opening file");
+     	  return;
+  	}
+	fprintf(fp,"%d\t%d\n", updateNumFiles, versionNum);
+	while(current != NULL){
+	   fprintf(fp, "%s\t%d\t%s\t%s\n", current->UMAD, current->version, current->filePath, current->hashcode);
+	   current = current->next;
+	}
+	fclose(fp);
+}
+
 char * createHashcode(char * fileStream, size_t length, char* buffer){
 	int i = 0;
 	char shaConverted[2];
@@ -164,13 +212,8 @@ char * createHashcode(char * fileStream, size_t length, char* buffer){
 	return buffer;
 }
 
-void addCommand(char* filePath, char* filePathWithoutProj, char* manifestPath){
-	// get linked list of manifest file
-	struct node * head;
-	head = createManifestList(manifestPath, head);
-
+char * readFileAndHash(char* filePath, char* hashcode){
 	size_t length;
-	char hashcode[2*SHA256_DIGEST_LENGTH];
 	int fileBytes = getFileSizeInBytes(filePath);
 	int fileDesc = open(filePath, O_RDONLY);
 	if(fileDesc == -1){
@@ -184,10 +227,18 @@ void addCommand(char* filePath, char* filePathWithoutProj, char* manifestPath){
 	strcpy(hashcode, createHashcode(stream, length, hashcode));
 	free(stream);
 	int closeStatus = close(fileDesc);
-	head = addFileToList(1,filePathWithoutProj,hashcode, head);
-	writeToManifest(manifestPath, head, 1);
+	return hashcode;
 }
 
+void addCommand(char* filePath, char* filePathWithoutProj, char* manifestPath){
+	// get linked list of manifest file
+	struct node * head;
+	head = createManifestList(manifestPath, head);
+	char hashcode[2*SHA256_DIGEST_LENGTH];
+	strcpy(hashcode, readFileAndHash(filePath, hashcode));
+	head = addFileToList(1,filePathWithoutProj,hashcode, head, NULL);
+	writeToManifest(manifestPath, head, 1);
+}
 void removeCommand(char * filePathWithoutProj, char* manifestPath){
 	// get linked list of manifest file
 	struct node * head;
@@ -196,6 +247,64 @@ void removeCommand(char * filePathWithoutProj, char* manifestPath){
 	writeToManifest(manifestPath, head, -1);
 }
 
+
+struct node * compareManifests(char * project, struct node * c_head, struct node * s_head, struct node * updatedList){
+	struct node * updateList = updatedList;
+	struct node * s_curr;
+	struct node * c_curr = c_head;
+	int found = 0;
+	while(c_curr != NULL){
+		s_curr = s_head;
+		while(s_curr != NULL){
+			if(strcmp(c_curr->filePath, s_curr->filePath) == 0){
+				if(versionNum == versionNum_s){
+					if(strcmp(c_curr->hashcode, s_curr->hashcode) != 0){
+						//UPLOADED
+						updateList = addFileToList(s_curr->version, s_curr->filePath, s_curr->hashcode, updateList, "U");
+						s_head = removeFileFromList(c_curr->filePath, s_head);
+					}
+					found = 1;
+					break;
+				}else if(versionNum != versionNum_s && c_curr->version != s_curr->version){
+					char liveHashcode[2*SHA256_DIGEST_LENGTH];
+					char * fullFilePath = malloc((strlen(c_curr->filePath) + strlen(project) + 2)*sizeof(char));
+					strcpy(fullFilePath, project);
+					strcat(fullFilePath, "/");
+					strcat(fullFilePath, c_curr->filePath);
+					strcpy(liveHashcode,readFileAndHash(fullFilePath, liveHashcode));
+					free(fullFilePath);
+					if(strcmp(liveHashcode, c_curr->hashcode) == 0){
+						//MODIFIED
+						updateList = addFileToList(s_curr->version, s_curr->filePath, s_curr->hashcode, updateList, "M");
+						s_head = removeFileFromList(c_curr->filePath, s_head);
+						found = 1;
+						break;
+					}
+				}
+			}
+			s_curr = s_curr->next;
+		}
+		if(found == 0){
+			if(versionNum == versionNum_s){
+				updateList = addFileToList(c_curr->version, c_curr->filePath, c_curr->hashcode, updateList, "U");
+			}else if(versionNum != versionNum_s){
+				//DELETED
+				updateList = addFileToList(c_curr->version, c_curr->filePath, c_curr->hashcode, updateList, "D");
+			}
+		}
+		found = 0;
+		c_curr = c_curr->next;
+	}
+	s_curr = s_head;
+	while(s_curr != NULL){
+		if(versionNum != versionNum_s){
+			//ADDED
+			updateList = addFileToList(s_curr->version, s_curr->filePath, s_curr->hashcode, updateList, "A");
+		}
+		s_curr = s_curr->next;
+	}
+	return updateList;
+}
 
 
 /* ----------------END JON-------------------*/
@@ -273,7 +382,29 @@ int makeDirectories(char * dir){
 		strcat(test, &c);
 	}
 }
-
+void updateCommand(char * project, char* clientManifestPath){
+	char* serverManifestPath = malloc((strlen(clientManifestPath)+3)*sizeof(char));
+	strcpy(serverManifestPath, clientManifestPath);
+	strcat(serverManifestPath, "_s");
+	struct node* c_head;
+	struct node* s_head;
+	struct node* updatedList;
+	updateNumFiles = 0;
+	c_head = createManifestList(clientManifestPath, c_head);
+	s_head = createManifestList(serverManifestPath, s_head); 
+	updatedList = compareManifests(project, c_head, s_head, updatedList);
+	if(updatedList != NULL){
+		printList(updatedList);
+		char* updatePath = malloc((strlen(project) + strlen("/.Update") + 1)*sizeof(char));
+		strcpy(updatePath, project);
+		strcat(updatePath, "/.Update");
+		writeToUpdate(updatePath, updatedList);
+		free(updatePath);
+	}else{
+		printf("All files up to date.\n");
+	}
+	
+}
 int checkout(char * name, int sock){
 	char * projDir = malloc(3 + strlen(name));
 	strcpy(projDir, "./\0");
@@ -371,7 +502,19 @@ int main(int argc, char ** argv){
 		printf("projects is an invalid project name because the server files are stored in a directory named \"projects\"\n");
 		return 0;
 	}
-	
+	if(strcmp(command, "update") == 0){
+		char *manifestPath;
+		manifestPath = (char*)malloc((strlen(name)+strlen("manifest")+2)*sizeof(char));
+		int fileType = regularFileOrDirectory(name);
+		if(fileType != 0){
+			printf("Invalid project name\n");
+			return 1;
+		}
+		strcpy(manifestPath, name);
+		strcat(manifestPath, "/.Manifest");
+		updateCommand(name, manifestPath);
+		return 0;
+	}
 	if(strcmp(command, "remove") == 0 || strcmp(command, "add") == 0){
 		char *manifestPath;
 		char *filePath;
@@ -422,7 +565,7 @@ int main(int argc, char ** argv){
 	}else if(strcmp(command, "rollback") == 0){
 		rollback(name, socketfd, argv[4]);
 	}else{
-		send(comm, "invalid", 50, 0);
+		send(socketfd, "invalid", 50, 0);
 		printf("Invalid command given.\n");
 	}
 
