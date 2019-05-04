@@ -51,10 +51,12 @@ struct node* addFileToList(int version, char* filePath, char* hashcode, struct n
 	if(UMAD == NULL){
 		while(current != NULL){
 			if(strcmp(current->filePath, filePath) == 0 && strcmp(current->hashcode, hashcode) != 0){
+				numFiles = numFiles - 1;
 				printf("File already exists. Changes were made.\n");
 				strcpy(current->hashcode, hashcode);
 				return head;
 			}else if(strcmp(current->filePath, filePath) == 0 ){
+				numFiles = numFiles - 1;
 				printf("File already exists. No changes were made.\n");
 				return head;
 			}
@@ -128,6 +130,7 @@ struct node* removeFileFromList(char* filePath, struct node * head){
 			prev = current;
 			current = current->next;
 		}else{
+			numFiles = numFiles + 1;
 			printf("File does not exist in manifest.\n");
 			break;
 		}
@@ -230,7 +233,7 @@ char * readFileAndHash(char* filePath, char* hashcode){
 
 void addCommand(char* filePath, char* filePathWithoutProj, char* manifestPath){
 	// get linked list of manifest file
-	struct node * head;
+	struct node * head = NULL;
 	head = createManifestList(manifestPath, head);
 	char hashcode[2*SHA256_DIGEST_LENGTH];
 	strcpy(hashcode, readFileAndHash(filePath, hashcode));
@@ -240,7 +243,7 @@ void addCommand(char* filePath, char* filePathWithoutProj, char* manifestPath){
 
 void removeCommand(char * filePathWithoutProj, char* manifestPath){
 	// get linked list of manifest file
-	struct node * head;
+	struct node * head = NULL;
 	head = createManifestList(manifestPath, head);
 	head = removeFileFromList(filePathWithoutProj, head);
 	writeToManifest(manifestPath, head, -1);
@@ -341,10 +344,9 @@ int create(char * name, int sock){
 	
 	int remaining = size;
 	int written;
-	while( (remaining > 0) && ((written = recv(sock, buffer, 1000, 0)) > 0) ){
+	while( (remaining > 0) && ((written = recv(sock, buffer, size, 0)) > 0) ){
 		write(fd, buffer, written);
 		remaining = remaining - written;
-		printf("%d remaining\n", remaining);
 	}
 	close(fd);
 	return 0;
@@ -444,7 +446,7 @@ int checkout(char * name, int sock){
 		int written;
 		printf("size is %d\n", size);
 		int fd = open(file, O_CREAT | O_RDWR | O_TRUNC, S_IWUSR | S_IRUSR);
-		char inc[1000];
+		char * inc = malloc(size + 1);
 		while( (remaining > 0) && ((written = recv(sock, inc, size, 0)) > 0) ){
 			write(fd, inc, written);
 			remaining = remaining - written;
@@ -489,6 +491,159 @@ int configure(char * ip, char * port){
 	write(fd, ip, strlen(ip));
 	write(fd, "\t", 1);
 	write(fd, port, strlen(port));
+}
+
+int createManifestS(char * projDir, int sock, int size){
+	char * manifestS = malloc(14 + strlen(projDir));
+	strcpy(manifestS, projDir);
+	strcat(manifestS, "/.Manifest_S");
+	int fd = open(manifestS, O_CREAT | O_RDWR | O_TRUNC, S_IWUSR | S_IRUSR);
+	char * incoming = malloc(size + 1);
+	int remaining = size;
+	int written;
+	while( (remaining > 0) && ((written = recv(sock, incoming, size, 0)) > 0) ){
+		printf("received %d\n", written);
+		write(fd, incoming, written);
+		remaining = remaining - written;
+	}
+	close(fd);
+	return 0;
+}
+
+struct node * rehash(struct node * cHead, char * projDir){
+	struct node * ptr = cHead;
+	while(ptr != NULL){
+		char * path = malloc(strlen(projDir) + strlen(ptr->filePath) + 3);
+		strcpy(path, projDir);
+		strcat(path, "/\0");
+		strcat(path, ptr->filePath);
+		char hashcode[2*SHA256_DIGEST_LENGTH];
+		strcpy(hashcode,readFileAndHash(path, hashcode));
+		if(strcmp(ptr->hashcode, hashcode) != 0){
+			ptr->version = ptr->version + 1;
+			strcpy(ptr->hashcode, hashcode);
+		}
+		ptr = ptr->next;
+	}
+	return cHead;
+}
+
+int compCommit(struct node * cHead, struct node * sHead, char * projDir){
+	char * path = malloc(strlen(projDir) + 10);
+	strcpy(path, projDir);
+	strcat(path, "/.commit");
+	struct node * cptr = rehash(cHead, projDir);
+	struct node * sptr = sHead;
+	FILE * fd = fopen(path, "w");
+	if(fd == NULL){
+		printf("Cannot write commit file\n");
+		return 0;
+	}
+	struct node * cprev = cptr;
+	struct node * sprev = sptr;
+	while(cptr != NULL && sptr != NULL){
+		printf("loop1\n");
+		while(sptr != NULL){
+			printf("loop2\n");
+			if(strcmp(cptr->filePath, sptr->filePath) == 0){
+				if(strcmp(cptr->hashcode, sptr->hashcode) != 0){
+					if(cptr->version > sptr->version){
+						fprintf(fd, "U\t%d\t%s\t%s\n", cptr->version, cptr->filePath, cptr->hashcode);
+					}else{
+						printf("Please sync with the repository first\n");
+						close(fd);
+						remove(path);
+						return 0;
+					}
+				}
+				if(cptr == cHead){
+					cHead = cptr->next;
+				}else{
+					cprev->next = cptr->next;
+				}
+				if(sptr == sHead){
+					sHead = sptr->next;
+				}else{
+					sprev->next = sptr->next;
+				}
+				break;
+			}
+			sprev = sptr;
+			sptr = sptr->next;
+		}
+		sptr = sHead;
+		sprev = sptr;
+		cptr = cptr->next;
+	}
+	while(cHead != NULL){
+		fprintf(fd, "A\t%d\t%s\t%s\n", cHead->version, cHead->filePath, cHead->hashcode);
+		cHead = cHead->next;
+	}
+	while(sHead != NULL){
+		fprintf(fd, "D\t%d\t%s\t%s\n", sHead->version, sHead->filePath, sHead->hashcode);
+		sHead = sHead->next;
+	}
+	return 0;
+}
+
+int commit(char * name, int sock){
+	char * projDir = malloc(3 + strlen(name));
+	strcpy(projDir, "./\0");
+	strcat(projDir, name);
+	
+	struct stat st = {0};
+	if (stat(projDir, &st) == -1) {
+		printf("Project does not exist in local, nothing to commit\n");
+		return 0;
+	}
+	
+	send(sock, "commit", 50, 0);
+	sleep(1);
+	send(sock, name, 2000, 0);
+	char sizeStr[100];
+	recv(sock, sizeStr, 100, 0);
+	if(strcmp(sizeStr, "error") == 0){
+		printf("This project does not exist on the server\n");
+		return 0;
+	}
+	
+	int size = atoi(sizeStr);
+	
+	if(size == 0){
+		printf("Could not get manifest for this project\n");
+		return 0;
+	}
+	printf("manifest is this big %d\n", size);
+	createManifestS(projDir, sock, size);
+	
+	FILE * cfd;
+	char * clientMan = malloc(14 + strlen(projDir));
+	strcpy(clientMan, projDir);
+	strcat(clientMan, "/.Manifest");
+	FILE * sfd;
+	char * serverMan = malloc(14 + strlen(projDir));
+	strcpy(serverMan, projDir);
+	strcat(serverMan, "/.Manifest_S");
+	
+	cfd = fopen(clientMan, "r");
+	sfd = fopen(serverMan, "r");
+	
+	int sVer, cVer;
+	
+	fscanf(cfd, "%*d\t%d", &cVer);
+	fscanf(sfd, "%*d\t%d", &sVer);
+	if(cVer != sVer){
+		printf("Please update local repository\n");
+		return 0;
+	}
+	struct node * cHead = NULL;
+	struct node * sHead = NULL;
+	
+	cHead = createManifestList(clientMan, cHead);
+	sHead = createManifestList(serverMan, sHead);
+	
+	compCommit(cHead, sHead, projDir);
+	
 }
 
 int main(int argc, char ** argv){
@@ -574,6 +729,8 @@ int main(int argc, char ** argv){
 		checkout(name, socketfd);
 	}else if(strcmp(command, "rollback") == 0){
 		rollback(name, socketfd, argv[3]);
+	}else if(strcmp(command, "commit") == 0){
+		commit(name, socketfd);
 	}else{
 		send(socketfd, "invalid", 50, 0);
 		printf("Invalid command given.\n");
