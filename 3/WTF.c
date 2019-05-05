@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
@@ -283,6 +284,8 @@ struct node * compareManifests(char * project, struct node * c_head, struct node
 						found = 1;
 						break;
 					}
+					// do i add this here?
+					found = 1;
 				}
 			}
 			s_curr = s_curr->next;
@@ -383,7 +386,25 @@ int makeDirectories(char * dir){
 	}
 }
 
-void updateCommand(char * project, char* clientManifestPath){
+void updateCommand(char * project, char* clientManifestPath, int sock){
+	send(sock , "update", 50, 0);
+	sleep(1);
+	send(sock, project, 2000, 0);
+	char buffer[1000];
+	recv(sock, buffer, 1000, 0);
+	int size = atoi(buffer);
+	char * manifest = malloc(14 + strlen(project));
+	strcpy(manifest, project);
+	strcat(manifest, "/.Manifest_s");
+	int fd = open(manifest, O_CREAT | O_RDWR | O_TRUNC, S_IWUSR | S_IRUSR);
+	
+	int remaining = size;
+	int written;
+	while( (remaining > 0) && ((written = recv(sock, buffer, 1000, 0)) > 0) ){
+		write(fd, buffer, written);
+		remaining = remaining - written;
+	}
+	close(fd);
 	char* serverManifestPath = malloc((strlen(clientManifestPath)+3)*sizeof(char));
 	strcpy(serverManifestPath, clientManifestPath);
 	strcat(serverManifestPath, "_s");
@@ -405,6 +426,86 @@ void updateCommand(char * project, char* clientManifestPath){
 		printf("All files up to date.\n");
 	}
 	
+}
+
+struct node * updateManifest(int version, char * filePath, char * hashcode, struct node * head){
+	struct node * current = head;
+	while(current != NULL){
+		if(strcmp(current->filePath, filePath) == 0){
+			current->version = version;
+			strcpy(current->hashcode, hashcode);
+			return head;
+		}
+		if(current->next != NULL){
+			current = current->next;
+		}else{
+			break;
+		}
+	}
+	return head;
+}
+
+void fetchFilesAndWrite(char * project, char * filePath, int sock){
+	send(sock, "upgrade", 50, 0);
+	sleep(1);
+	send(sock, project, 2000, 0);
+	sleep(1);
+	send(sock, filePath, 1000, 0);
+	char buffer[1000];
+	recv(sock, buffer, 1000, 0);
+	int size = atoi(buffer);
+	char * fullFilePath = malloc((strlen(project) + strlen(filePath) + 2)*sizeof(char));
+	strcpy(fullFilePath, project);
+	strcat(fullFilePath, "/");
+	strcat(fullFilePath, filePath);
+	int fd = open(fullFilePath, O_CREAT | O_RDWR | O_TRUNC, S_IWUSR | S_IRUSR);
+	int remaining = size;
+	int written;
+	while( (remaining > 0) && ((written = recv(sock, buffer, 1000, 0)) > 0) ){
+		write(fd, buffer, written);
+		remaining = remaining - written;
+	}
+	close(fd);
+	return;
+}
+
+void upgrade(char* project, char* clientManifestPath, int sock){
+	char* updatePath = malloc((strlen(project) + strlen("/.Update") + 1)*sizeof(char));
+	strcpy(updatePath, project);
+	strcat(updatePath, "/.Update");
+	
+	FILE *fp;
+	char UMAD[2];
+	int version, num, vNum;
+	char filePath[256];
+	char hashcode[256];
+	fp = fopen(updatePath , "r");	
+	if(fp == NULL) {
+     	  perror("No update file");
+     	  return;
+  	}
+	struct node* c_head;
+	c_head = createManifestList(clientManifestPath, c_head);
+	fscanf(fp, "%d\t%d", &num, &vNum);
+	numFiles = num;
+	versionNum= vNum;
+	while(fscanf(fp, "%s %d %s %s", UMAD, &version, filePath, hashcode) != EOF){
+		if(strcmp(UMAD, "U") == 0){
+				// what do
+		}else if(strcmp(UMAD, "M") == 0){
+			c_head = updateManifest(version, filePath, hashcode, c_head);
+			fetchFilesAndWrite(project, filePath, sock);
+		}else if(strcmp(UMAD, "A") == 0){
+			c_head = updateManifest(version, filePath, hashcode, c_head);
+			fetchFilesAndWrite(project, filePath, sock);
+		}else if(strcmp(UMAD, "D") == 0){
+			c_head = removeFileFromList(filePath, c_head);
+		}
+		printf("close \n");
+	}
+	writeToManifest(clientManifestPath, c_head, 0);
+	fclose(fp);
+	return;
 }
 
 int checkout(char * name, int sock){
@@ -782,19 +883,7 @@ int main(int argc, char ** argv){
 		return 0;
 	}
 	
-	if(strcmp(command, "update") == 0){
-		char *manifestPath;
-		manifestPath = (char*)malloc((strlen(name)+strlen("manifest")+2)*sizeof(char));
-		int fileType = regularFileOrDirectory(name);
-		if(fileType != 0){
-			printf("Invalid project name\n");
-			return 1;
-		}
-		strcpy(manifestPath, name);
-		strcat(manifestPath, "/.Manifest");
-		updateCommand(name, manifestPath);
-		return 0;
-	}else if(strcmp(command, "remove") == 0 || strcmp(command, "add") == 0){
+	if(strcmp(command, "remove") == 0 || strcmp(command, "add") == 0){
 		char *manifestPath;
 		char *filePath;
 		manifestPath = (char*)malloc((strlen(name)+strlen("manifest")+2)*sizeof(char));
@@ -854,6 +943,30 @@ int main(int argc, char ** argv){
 		commit(name, socketfd);
 	}else if(strcmp(command, "push") == 0){
 		push(name, socketfd);
+	}else if(strcmp(command, "update") == 0){
+		char *manifestPath;
+		manifestPath = (char*)malloc((strlen(name)+strlen("manifest")+2)*sizeof(char));
+		int fileType = regularFileOrDirectory(name);
+		if(fileType != 0){
+			printf("Invalid project name\n");
+			return 1;
+		}
+		strcpy(manifestPath, name);
+		strcat(manifestPath, "/.Manifest");
+		updateCommand(name, manifestPath, socketfd);
+		return 0;
+	}else if(strcmp(command, "upgrade") == 0){
+		char *manifestPath;
+		manifestPath = (char*)malloc((strlen(name)+strlen("manifest")+2)*sizeof(char));
+		int fileType = regularFileOrDirectory(name);
+		if(fileType != 0){
+			printf("Invalid project name\n");
+			return 1;
+		}
+		strcpy(manifestPath, name);
+		strcat(manifestPath, "/.Manifest");
+		upgrade(name, manifestPath, socketfd);
+		return 0;
 	}else{
 		send(socketfd, "invalid", 50, 0);
 		printf("Invalid command given.\n");

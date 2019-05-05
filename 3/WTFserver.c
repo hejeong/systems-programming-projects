@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 #include <stdio.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -97,6 +98,80 @@ int makeDirectories(char * dir){
 		c[1] = '\0';
 		strcat(test, c);
 	}
+}
+
+void * upgrade(void * tArgs){
+		printf("SUH\n);
+	struct multiArgs * args = (struct multiArgs *) tArgs;
+	char * projDir = malloc(strlen(args->dir) + 1);
+	char fileName[1000];
+	int sock = args->socket;
+	strcpy(projDir, args->dir);
+	recv(sock, fileName, 1000, 0);
+	DIR *dir;
+	struct dirent *dent;
+	struct dirent *last_dent;
+	dir = opendir(projDir);
+	//find most recent dir
+	while((dent = readdir(dir)) != NULL){
+		last_dent = dent;
+	}
+	char * filePath = malloc((strlen(projDir) + strlen(last_dent->d_name) + strlen(fileName) + 3)*sizeof(char));
+	strcpy(filePath, projDir);
+	strcat(filePath, "/");
+	strcat(filePath, last_dent->d_name);
+	strcat(filePath, "/");
+	strcat(filePath, fileName);
+	int fd = open(filePath, O_RDONLY);
+
+	struct stat fileStat;
+	char fileSize[1000];
+	fstat(fd, &fileStat);
+	sprintf(fileSize, "%d", fileStat.st_size);
+	send(sock, fileSize, strlen(fileSize), 0);
+	sleep(1);
+	int sent;
+	int remaining = fileStat.st_size;
+	while( (remaining > 0) && ((sent = sendfile(sock, fd, NULL, 1000)) > 0) ){
+		remaining = remaining - sent;	
+	}
+	close(fd);
+	return NULL;
+}
+void * update(void * tArgs){
+	struct multiArgs * args = (struct multiArgs *) tArgs;
+	char * projDir = malloc(strlen(args->dir) + 1);
+	int sock = args->socket;
+	strcpy(projDir, args->dir);
+	
+	DIR *dir;
+	struct dirent *dent;
+	struct dirent *last_dent;
+	dir = opendir(projDir);
+	//find most recent dir
+	while((dent = readdir(dir)) != NULL){
+		last_dent = dent;
+	}
+	char * server_manifest = malloc((strlen(projDir) + strlen(last_dent->d_name) + strlen("/.Manifest") + 2)*sizeof(char));
+	strcpy(server_manifest, projDir);
+	strcat(server_manifest, "/");
+	strcat(server_manifest, last_dent->d_name);
+	strcat(server_manifest, "/.Manifest");
+	int fd = open(server_manifest, O_RDONLY);
+	struct stat fileStat;
+	char fileSize[1000];
+	fstat(fd, &fileStat);
+	sprintf(fileSize, "%d", fileStat.st_size);
+	send(sock, fileSize, strlen(fileSize), 0);
+	sleep(1);
+	int sent;
+	int remaining = fileStat.st_size;
+	
+	while( (remaining > 0) && ((sent = sendfile(sock, fd, NULL, 1000)) > 0) ){
+		remaining = remaining - sent;
+	}
+	close(fd);
+	return NULL;
 }
 
 void * create(void * tArgs){
@@ -801,6 +876,7 @@ void * checkPush(void * tArgs){
 	}
 	send(sock, "no match", 50, 0);
 	pthread_mutex_unlock(&(ptr->lock));
+	return NULL;
 }
 
 int main(int argc, char** argv){
@@ -906,6 +982,12 @@ int main(int argc, char** argv){
 			}else if(strcmp(command, "push") == 0){
 				pthread_t id;
 				pthread_create(&id, NULL, checkPush, (void *) args);
+			}else if(strcmp(command, "update") == 0){
+				pthread_t id;
+				pthread_create(&id, NULL, update, (void *) args);
+			}else if(strcmp(command, "upgrade") == 0){
+				pthread_t id;
+				pthread_create(&id, NULL, upgrade, (void *) args);
 			}
 		}
 	}
