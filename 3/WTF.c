@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include <stddef.h>
 #include <openssl/sha.h>
+#include <unistd.h>
 /* --------------- JON ADDED THESE ----------------*/
 struct node {
 	char * UMAD;
@@ -551,7 +552,7 @@ int compCommit(struct node * cHead, struct node * sHead, char * projDir){
 						fprintf(fd, "U\t%d\t%s\t%s\n", cptr->version, cptr->filePath, cptr->hashcode);
 					}else{
 						printf("Please sync with the repository first\n");
-						close(fd);
+						fclose(fd);
 						remove(path);
 						return 0;
 					}
@@ -583,7 +584,8 @@ int compCommit(struct node * cHead, struct node * sHead, char * projDir){
 		fprintf(fd, "D\t%d\t%s\t%s\n", sHead->version, sHead->filePath, sHead->hashcode);
 		sHead = sHead->next;
 	}
-	return 0;
+	fclose(fd);
+	return 1;
 }
 
 int commit(char * name, int sock){
@@ -636,13 +638,33 @@ int commit(char * name, int sock){
 		printf("Please update local repository\n");
 		return 0;
 	}
+	fclose(cfd);
+	fclose(sfd);
 	struct node * cHead = NULL;
 	struct node * sHead = NULL;
 	
 	cHead = createManifestList(clientMan, cHead);
 	sHead = createManifestList(serverMan, sHead);
 	
-	compCommit(cHead, sHead, projDir);
+	if(compCommit(cHead, sHead, projDir) == 0){
+		send(sock, "error", 100, 0);
+		return 0;
+	}
+	
+	char * path = malloc(strlen(projDir) + 10);
+	strcpy(path, projDir);
+	strcat(path, "/.commit\0");
+	int fd = open(path, O_RDONLY);
+	struct stat fileStat;
+	char fileSize[100];
+	fstat(fd, &fileStat);
+	sprintf(fileSize, "%d", fileStat.st_size);
+	send(sock, fileSize, 100, 0); //sends the size of manifest
+	int sent;
+	int remaining = fileStat.st_size;
+	while( (remaining > 0) && ((sent = sendfile(sock, fd, NULL, 1000)) > 0) ){
+		remaining = remaining - sent;
+	}
 	
 }
 

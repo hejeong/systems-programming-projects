@@ -100,7 +100,6 @@ void * create(void * tArgs){
 		remaining = remaining - sent;
 	}
 	
-	
 	close(fd);
 	
 	pthread_mutex_unlock(&masterLock);
@@ -376,6 +375,40 @@ void * rollback(void * tArgs){
 	return NULL;
 }
 
+char * getCommitNum(char * path){
+	DIR *dir;
+	struct dirent *dent;
+	int ver = 0;
+	
+	struct stat st = {0};
+	if (stat(path, &st) == -1) {
+		mkdir(path, 0700);
+	}
+	
+	//open directory
+	dir = opendir(path);
+	//graceful error if dir can't be opened
+	if(dir == NULL){
+		printf("Directory %s cannot be opened\n", path);
+		return NULL;
+	}
+	//finds the latest version number
+	while((dent = readdir(dir)) != NULL){
+		// skip over [.] and [..]
+		if(!strcmp(".", dent->d_name) || !strcmp("..", dent->d_name)){
+			continue;	
+		}
+		int check;
+		check = atoi(dent->d_name);
+		if(check > ver){
+			ver = check;
+		}
+	}
+	char * version = malloc(20);
+	sprintf(version, "%d", ver + 1);
+	return version;
+}
+
 void * commit(void * tArgs){
 	struct multiArgs * args = (struct multiArgs *) tArgs;
 	char * name = malloc(strlen(args->name) + 1);
@@ -427,7 +460,7 @@ void * commit(void * tArgs){
 	}
 	char version[20];
 	sprintf(version, "%d", ver);
-	char * manifest = malloc(2 + strlen(version) + strlen(dirp));
+	char * manifest = malloc(15 + strlen(version) + strlen(dirp));
 	strcpy(manifest, dirp);
 	strcat(manifest, "/\0");
 	strcat(manifest, version);
@@ -440,13 +473,36 @@ void * commit(void * tArgs){
 	fstat(mfd, &mfileStat);
 	sprintf(mfileSize, "%d", mfileStat.st_size);
 	send(sock, mfileSize, 100, 0); //sends the size of manifest
-	printf("I say the manifest is this big %s\n", mfileSize);
 	int msent;
 	int mremaining = mfileStat.st_size;
 	while( (mremaining > 0) && ((msent = sendfile(sock, mfd, NULL, 1000)) > 0) ){
-		printf("sent %d\n", msent);
 		mremaining = mremaining - msent;
 	}
+	char fileSize[100];
+	recv(sock, fileSize, 100, 0);
+	if(strcmp(fileSize,"error") == 0){
+		printf("Client needs to sync with server first\n");
+	}
+	int size = atoi(fileSize);
+	char * commit = malloc(30 + strlen(version) + strlen(dirp));
+	strcpy(commit, dirp);
+	strcat(commit, "/\0");
+	strcat(commit, version);
+	strcat(commit, "/commits\0");
+	char * commitNum = getCommitNum(commit);
+	strcat(commit, "/\0");
+	strcat(commit, commitNum);
+	
+	
+	int fd = open(commit, O_CREAT | O_RDWR | O_TRUNC, S_IWUSR | S_IRUSR);
+	char * incoming = malloc(size + 1);
+	int remaining = size;
+	int written;
+	while( (remaining > 0) && ((written = recv(sock, incoming, size, 0)) > 0) ){
+		write(fd, incoming, written);
+		remaining = remaining - written;
+	}
+	close(fd);
 	close(sock);
 	pthread_mutex_unlock(&(ptr->lock));
 	return NULL;
@@ -542,7 +598,6 @@ int main(int argc, char** argv){
 			if(strcmp(command, "destroy") == 0){
 				pthread_t id;
 				pthread_create(&id, NULL, destroyP, (void *) args);
-				//destroy(name, projDir);
 			}else if(strcmp(command, "checkout") == 0){
 				pthread_t id;
 				pthread_create(&id, NULL, checkout, (void *) args);
