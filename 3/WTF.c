@@ -12,7 +12,8 @@
 #include <stddef.h>
 #include <openssl/sha.h>
 #include <unistd.h>
-/* --------------- JON ADDED THESE ----------------*/
+
+
 struct node {
 	char * UMAD;
 	int version;
@@ -309,8 +310,6 @@ struct node * compareManifests(char * project, struct node * c_head, struct node
 }
 
 
-/* ----------------END JON-------------------*/
-
 
 int create(char * name, int sock){
 	
@@ -368,7 +367,7 @@ int destroy(char * name, int sock){
 }
 int makeDirectories(char * dir){
 	char * test = malloc(strlen(dir) + 1);
-	strcpy(test, "./\0");
+	strcpy(test, "\0");
 	printf("making directories for %s\n", dir);
 	int i;
 	for(i = 2; i < strlen(dir); i++){
@@ -435,8 +434,9 @@ int checkout(char * name, int sock){
 	for(i = 1; i <= num; i++){
 		char directory[1000];
 		recv(sock, directory, 1000, 0);
-		char * file = malloc(strlen(projDir) + strlen(directory) + 1);
-		strcpy(file, projDir);
+		char * file = malloc(strlen(projDir) + strlen(directory) + 4);
+		strcpy(file, "./\0");
+		strcat(file, projDir);
 		strcat(file, "/\0");
 		strcat(file, directory);
 		makeDirectories(file);
@@ -659,13 +659,112 @@ int commit(char * name, int sock){
 	char fileSize[100];
 	fstat(fd, &fileStat);
 	sprintf(fileSize, "%d", fileStat.st_size);
-	send(sock, fileSize, 100, 0); //sends the size of manifest
+	send(sock, fileSize, 100, 0); 
 	int sent;
 	int remaining = fileStat.st_size;
 	while( (remaining > 0) && ((sent = sendfile(sock, fd, NULL, 1000)) > 0) ){
 		remaining = remaining - sent;
 	}
+}
+
+int push(char * name, int sock){
+	char * projDir = malloc(3 + strlen(name));
+	strcpy(projDir, "./\0");
+	strcat(projDir, name);
 	
+	struct stat st1 = {0};
+	if (stat(projDir, &st1) == -1) {
+		printf("Project does not exist in local, nothing to push\n");
+		return 0;
+	}
+	
+	 char * commitDir = malloc(12 + strlen(projDir));
+	 strcpy(commitDir, projDir);
+	 strcat(commitDir, "/.commit\0");
+	 
+	struct stat st2 = {0};
+	if (stat(commitDir, &st2) == -1) {
+		printf("Commit does not exist, please commit first before pushing\n");
+		return 0;
+	}
+	
+	send(sock, "push", 50, 0);
+	send(sock, name, 2000, 0);
+	char buffer[50];
+	recv(sock, buffer, 50, 0);
+	printf("received %s\n", buffer);
+	if(strcmp(buffer, "send") == 0){
+		char hashcode[2*SHA256_DIGEST_LENGTH];
+		strcpy(hashcode,readFileAndHash(commitDir, hashcode));
+		printf("sending %s\n", hashcode);
+		send(sock, hashcode, 256, 0);
+	}else if(strcmp(buffer, "dont") == 0){
+		printf("Please commit to server first\n");
+		return 0;
+	}else{
+		printf("Project does not exist on the server\n");
+		return 0;
+	}
+	
+	recv(sock, buffer, 50, 0);
+	if(strcmp(buffer, "no match") == 0){
+		printf("The current commit does not exist on the server, please commit first\n");
+		return 0;
+	}else if(strcmp(buffer, "success") == 0){
+		printf("got success\n");
+		char * path = malloc(strlen(projDir) + 10);
+		strcpy(path, projDir);
+		strcat(path, "/.commit\0");
+		
+		int file = open(path, O_RDONLY);
+		struct stat fileStat;
+		char fileSize[100];
+		fstat(file, &fileStat);
+		sprintf(fileSize, "%d", fileStat.st_size);
+		send(sock, fileSize, 100, 0);
+		int size = fileStat.st_size;
+		close(file);
+		
+		FILE * fd = fopen(path, "r");
+		char * line = malloc(size + 1);
+		char * command = malloc(2);
+		char * hash = malloc(2*SHA256_DIGEST_LENGTH + 1);
+		char * filePath = malloc(size + 1);
+		char * version = malloc(10);
+		while(fgets(line, size, fd) != NULL){
+			printf("read %s\ntotal file is this big %d\n", line, size);
+			sscanf(line, "%s\t%s\t%s\t%s", command, version, filePath, hash);
+			
+			send(sock, command, 2, 0);
+			send(sock, version, 10, 0);
+			send(sock, filePath, size, 0);
+			send(sock, hash, 2*SHA256_DIGEST_LENGTH, 0);
+			if(strcmp(command, "D") == 0){
+				
+			}else{
+				char * fullPath = malloc(strlen(projDir) + strlen(filePath) + 3);
+				strcpy(fullPath, projDir);
+				strcat(fullPath, "/\0");
+				strcat(fullPath, filePath);
+				printf("sending %s\n", fullPath);
+				file = open(fullPath, O_RDONLY);
+				struct stat fStat;
+				char indSize[100];
+				fstat(file, &fStat);
+				sprintf(indSize, "%d", fStat.st_size);
+				send(sock, indSize, 100, 0);
+				int iSize = fStat.st_size;
+				
+				int sent;
+				int remaining = size;
+				while( (remaining > 0) && ((sent = sendfile(sock, file, NULL, iSize)) > 0) ){
+					remaining = remaining - sent;
+				}
+				close(file);
+			}
+		}
+		send(sock, "Z", 2, 0);
+	}
 }
 
 int main(int argc, char ** argv){
@@ -753,6 +852,8 @@ int main(int argc, char ** argv){
 		rollback(name, socketfd, argv[3]);
 	}else if(strcmp(command, "commit") == 0){
 		commit(name, socketfd);
+	}else if(strcmp(command, "push") == 0){
+		push(name, socketfd);
 	}else{
 		send(socketfd, "invalid", 50, 0);
 		printf("Invalid command given.\n");

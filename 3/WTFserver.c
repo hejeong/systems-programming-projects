@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include <pthread.h>
 #include <dirent.h>
+#include <openssl/sha.h>
 struct node{
 	pthread_mutex_t lock;
 	char * name;
@@ -36,6 +37,65 @@ int regularFileOrDirectory(const char* path){
 		return 0;
 	}else if(S_ISREG(fileStat.st_mode)){
 		return 1;
+	}
+}
+
+int getFileSizeInBytes(const char* path){
+	struct stat fileStat;
+	stat(path, &fileStat);
+	int size = fileStat.st_size;
+	return size;
+}
+
+char * createHashcode(char * fileStream, size_t length, char* buffer){
+	int i = 0;
+	char shaConverted[2];
+	unsigned char hash[SHA256_DIGEST_LENGTH];
+	
+	SHA256(fileStream, length, hash);
+	strcpy(buffer, "");
+	for(i = 0; i < SHA256_DIGEST_LENGTH; i++){
+        sprintf(shaConverted, "%02x", hash[i]);
+		strcat(buffer, shaConverted);
+	}	
+	return buffer;
+}
+
+char * readFileAndHash(char* filePath, char* hashcode){
+	size_t length;
+	int fileBytes = getFileSizeInBytes(filePath);
+	int fileDesc = open(filePath, O_RDONLY);
+	if(fileDesc == -1){
+ 	  perror("Error opening file");
+     	  return;
+	}
+	char* stream = malloc((fileBytes+1)*sizeof(char));
+	read(fileDesc, stream, fileBytes);
+	stream[fileBytes] = '\0';
+	length = strlen(stream);
+	strcpy(hashcode, createHashcode(stream, length, hashcode));
+	free(stream);
+	int closeStatus = close(fileDesc);
+	return hashcode;
+}
+
+int makeDirectories(char * dir){
+	char * test = malloc(strlen(dir) + 3);
+	printf("making directories for %s\n", dir);
+	strcpy(test, "\0");
+	int i;
+	for(i = 2; i < strlen(dir); i++){
+		if(dir[i] == '/'){
+			struct stat st = {0};
+			if (stat(test, &st) == -1) {
+				printf("making this directory %s\n", test);
+				mkdir(test, 0700);
+			}
+		}
+		char * c = malloc(2);
+		c[0] = dir[i];
+		c[1] = '\0';
+		strcat(test, c);
 	}
 }
 
@@ -189,6 +249,8 @@ void * destroyP(void * tArgs){
 	}
 	if(locked != 1){
 		printf("Could not find the lock for this project\n");
+		send(sock, "error", 8, 0);
+		return NULL;
 	}
 	destroy(projDir);
 	send(sock, "success\0", 8, 0);
@@ -488,7 +550,7 @@ void * commit(void * tArgs){
 	strcpy(commit, dirp);
 	strcat(commit, "/\0");
 	strcat(commit, version);
-	strcat(commit, "/commits\0");
+	strcat(commit, "/.commits\0");
 	char * commitNum = getCommitNum(commit);
 	strcat(commit, "/\0");
 	strcat(commit, commitNum);
@@ -507,6 +569,240 @@ void * commit(void * tArgs){
 	pthread_mutex_unlock(&(ptr->lock));
 	return NULL;
 }
+
+int duplicate(char * oldDir, char * newDir){
+	printf("preparing to duplicate %s\n", oldDir);
+	DIR *dir;
+	struct dirent *dent;
+	//open directory
+	dir = opendir(oldDir);
+	//graceful error if dir can't be opened
+	if(dir == NULL){
+		printf("Directory %s cannot be opened\n", oldDir);
+		return 0;
+	}
+	//finds the latest version number
+	while((dent = readdir(dir)) != NULL){
+		// skip over [.] and [..]
+		if(!strcmp(".", dent->d_name) || !strcmp("..", dent->d_name)){
+			continue;	
+		}
+		
+		char * path = malloc(strlen(oldDir) + strlen(dent->d_name) + 3);
+		strcpy(path, oldDir);
+		strcat(path, "/\0");
+		strcat(path, dent->d_name);
+		printf("copying %s\n", path);
+		int type = regularFileOrDirectory(path);
+		char * newDirP = malloc(strlen(newDir) + strlen(dent->d_name) + 3);
+		strcpy(newDirP, newDir);
+		strcat(newDirP, "/\0");
+		strcat(newDirP, dent->d_name);
+		if(type == 0){
+			if(strcmp(dent->d_name, ".commits") != 0){
+				struct stat st = {0};
+				if (stat(newDirP, &st) == -1) {
+					mkdir(newDirP, 0700);
+				}
+				duplicate(path, newDirP);
+			}
+		}else{
+			char c;
+			FILE * fdr;
+			FILE * fdw;
+			fdr = fopen(path, "r"); // read mode
+			fdw = fopen(newDirP, "w");
+			while((c = fgetc(fdr)) != EOF){
+				fwrite(&c, 1, 1, fdw);
+			} 
+			fclose(fdr);
+			fclose(fdw);
+		}
+	}
+	return 1;
+}
+
+int push(char * dirp, int sock){
+	send(sock, "success", 50, 0);
+	char * commitSize = malloc(100);
+	recv(sock, commitSize, 100, 0);
+	int totalSize = atoi(commitSize);
+	while(1){
+		char command[2];
+		char version[10];
+		int size;
+		recv(sock, command, 2, 0);
+		recv(sock, version, 10, 0);
+		char * path = malloc(totalSize);
+		char * hash = malloc(2*SHA256_DIGEST_LENGTH);
+		recv(sock, path, totalSize, 0);
+		recv(sock, hash, 2*SHA256_DIGEST_LENGTH, 0);
+		char * fullPath = malloc(strlen(path) + strlen(dirp) + 3);
+		strcpy(fullPath, dirp);
+		strcat(fullPath, "/\0");
+		strcat(fullPath, path);
+		//printf("%s\t%s\t%s\t%s\n", command, version, fullPath, hash);
+		if(strcmp(command, "Z") == 0){
+			break;
+		}
+		
+		if(strcmp(command, "D") == 0){
+			break;
+		}
+		
+		if(strcmp(command, "A") == 0){
+			makeDirectories(fullPath);
+			char fileSize[100];
+			recv(sock, fileSize, 100, 0);
+			int size = atoi(fileSize);
+			printf("%d\n", size);
+			int fd = open(fullPath, O_CREAT | O_RDWR | O_TRUNC, S_IWUSR | S_IRUSR);
+			char * incoming = malloc(size + 1);
+			int remaining = size;
+			int written;
+			while( (remaining > 0) && ((written = recv(sock, incoming, size, 0)) > 0) ){
+				printf("received %d\n", written);
+				write(fd, incoming, written);
+				remaining = remaining - written;
+			}
+			close(fd);
+		}else if(strcmp(command, "U") == 0){
+			char fileSize[100];
+			recv(sock, fileSize, 100, 0);
+			int size = atoi(fileSize);
+			printf("%d\n", size);
+			int fd = open(fullPath, O_RDWR | O_TRUNC, S_IWUSR | S_IRUSR);
+			char * incoming = malloc(size + 1);
+			int remaining = size;
+			int written;
+			while( (remaining > 0) && ((written = recv(sock, incoming, size, 0)) > 0) ){
+				printf("received %d\n", written);
+				write(fd, incoming, written);
+				remaining = remaining - written;
+			}
+			close(fd);
+		}else{
+			//printf("invalid command from commit file\n");
+		}
+	}
+	return 0;
+}
+
+int prepPush(char * dirp, int ver, int sock){
+	char version[10];
+	sprintf(version, "%d", ver);
+	char versionInc[10];
+	sprintf(versionInc, "%d", ver + 1);
+	char * oldDir = malloc(strlen(dirp) + strlen(version) + 3);
+	strcpy(oldDir, dirp);
+	strcat(oldDir, "/\0");
+	strcat(oldDir, version);
+	char * newDir = malloc(strlen(dirp) + strlen(versionInc) + 3);
+	strcpy(newDir, dirp);
+	strcat(newDir, "/\0");
+	strcat(newDir, versionInc);
+	mkdir(newDir, 0700);
+	
+	if(duplicate(oldDir, newDir) == 1){
+		push(newDir, sock);
+	}
+	return 0;
+}
+
+void * checkPush(void * tArgs){
+	struct multiArgs * args = (struct multiArgs *) tArgs;
+	char * name = malloc(strlen(args->name) + 1);
+	char * dirp = malloc(strlen(args->dir) + 1);
+	int sock = args->socket;
+	
+	strcpy(name, args->name);
+	strcpy(dirp, args->dir);
+	
+	int locked = 0;
+	struct node * ptr = keychain;
+	while(ptr != NULL){
+		if(strcmp(ptr->name, name) == 0){
+			if(pthread_mutex_lock(&(ptr->lock)) != 0){
+				printf("unable to lock this project\n");
+				return NULL;
+			}
+			locked = 1;
+			break;
+		}
+	}
+	
+	if(locked != 1){
+		printf("Could not find the lock for this project\n");
+		return NULL;
+	}
+	DIR *dir;
+	struct dirent *dent;
+	int ver = 1;
+	//open directory
+	dir = opendir(dirp);
+	char * projDir = malloc(strlen(dirp) + 1);
+	strcpy(projDir, dirp);
+	//graceful error if dir can't be opened
+	if(dir == NULL){
+		printf("Directory %s cannot be opened\n", dirp);
+		return NULL;
+	}
+	//finds the latest version number
+	while((dent = readdir(dir)) != NULL){
+		// skip over [.] and [..]
+		if(!strcmp(".", dent->d_name) || !strcmp("..", dent->d_name)){
+			continue;	
+		}
+		int check;
+		check = atoi(dent->d_name);
+		if(check > ver){
+			ver = check;
+		}
+	}
+	closedir(dir);
+	char version[10];
+	sprintf(version, "%d", ver);
+	char * path = malloc(strlen(dirp) + strlen(version) + 15);
+	strcpy(path, dirp);
+	strcat(path, "/\0");
+	strcat(path, version);
+	strcat(path, "/.commits");
+	dir = opendir(path);
+	//graceful error if dir can't be opened
+	if(dir == NULL){
+		printf("Directory %s cannot be opened\n", path);
+		send(sock, "dont", 50, 0);
+		printf("sent dont\n");
+		return NULL;
+	}
+	send(sock, "send", 50, 0);
+	
+	char * code = malloc(256);
+	int received = recv(sock, code, 256, 0);
+	printf("%s\n%d\n", code, received);
+	while((dent = readdir(dir)) != NULL){
+		if(!strcmp(".", dent->d_name) || !strcmp("..", dent->d_name)){
+			continue;	
+		}
+		
+		char * commit = malloc(3 + strlen(dent->d_name) + strlen(path));
+		strcpy(commit, path);
+		strcat(commit, "/\0");
+		strcat(commit, dent->d_name);
+		
+		char hashcode[2*SHA256_DIGEST_LENGTH];
+		strcpy(hashcode,readFileAndHash(commit, hashcode));
+		printf("%s\n%d\n", code, received);
+		if(strcmp(code, hashcode) == 0){
+			prepPush(projDir, ver, sock);
+			pthread_mutex_unlock(&(ptr->lock));
+			return NULL;
+		}
+	}
+	send(sock, "no match", 50, 0);
+	pthread_mutex_unlock(&(ptr->lock));
+}
+
 int main(int argc, char** argv){
 	struct sockaddr_in address;
 	int list = socket(AF_INET,SOCK_STREAM,0);
@@ -583,7 +879,7 @@ int main(int argc, char** argv){
 			struct stat st2 = {0};
 			if (stat(projDir, &st2) == -1) {
 				printf("project does not exist on server\n");
-				send(comm, "error\0", 50, 0);
+				send(comm, "error", 50, 0);
 				close(comm);
 				continue;
 			}
@@ -607,6 +903,9 @@ int main(int argc, char** argv){
 			}else if(strcmp(command, "commit") == 0){
 				pthread_t id;
 				pthread_create(&id, NULL, commit, (void *) args);
+			}else if(strcmp(command, "push") == 0){
+				pthread_t id;
+				pthread_create(&id, NULL, checkPush, (void *) args);
 			}
 		}
 	}
