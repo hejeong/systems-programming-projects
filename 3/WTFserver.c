@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 #include <stdio.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -101,7 +100,7 @@ int makeDirectories(char * dir){
 }
 
 void * upgrade(void * tArgs){
-		printf("SUH\n);
+	printf("SUH\n");
 	struct multiArgs * args = (struct multiArgs *) tArgs;
 	char * projDir = malloc(strlen(args->dir) + 1);
 	char fileName[1000];
@@ -681,7 +680,7 @@ int duplicate(char * oldDir, char * newDir){
 				}
 				duplicate(path, newDirP);
 			}
-		}else{
+		}else if(strcmp(dent->d_name, ".Manifest") != 0){
 			char c;
 			FILE * fdr;
 			FILE * fdw;
@@ -694,6 +693,7 @@ int duplicate(char * oldDir, char * newDir){
 			fclose(fdw);
 		}
 	}
+	closedir(dir);
 	return 1;
 }
 
@@ -718,11 +718,13 @@ int push(char * dirp, int sock){
 		strcat(fullPath, path);
 		//printf("%s\t%s\t%s\t%s\n", command, version, fullPath, hash);
 		if(strcmp(command, "Z") == 0){
+			printf("out\n");
 			break;
 		}
 		
 		if(strcmp(command, "D") == 0){
-			break;
+			remove(fullPath);
+			continue;
 		}
 		
 		if(strcmp(command, "A") == 0){
@@ -741,6 +743,24 @@ int push(char * dirp, int sock){
 				remaining = remaining - written;
 			}
 			close(fd);
+		}else if(strcmp(command, "M") == 0){
+			char manifestSize[50];
+			int n = recv(sock, manifestSize, 50, 0);
+			int size = atoi(manifestSize);
+			char * manifest = malloc(strlen(dirp) + 15);
+			strcpy(manifest, dirp);
+			strcat(manifest, "/.Manifest\0");
+			int file = open(manifest, O_CREAT | O_RDWR | O_TRUNC, S_IWUSR | S_IRUSR);
+			
+			char * incoming = malloc(size + 1);
+			printf("matched %d writing %s bytes in %s\n", n, manifestSize, manifest);
+			int remaining = size;
+			int written;
+			while( (remaining > 0) && ((written = recv(sock, incoming, size, 0)) > 0) ){
+				write(file, incoming, written);
+				remaining = remaining - written;
+			}
+			close(file);
 		}else if(strcmp(command, "U") == 0){
 			char fileSize[100];
 			recv(sock, fileSize, 100, 0);
@@ -757,7 +777,7 @@ int push(char * dirp, int sock){
 			}
 			close(fd);
 		}else{
-			//printf("invalid command from commit file\n");
+			printf("invalid command from commit file\n");
 		}
 	}
 	return 0;
@@ -801,6 +821,7 @@ void * checkPush(void * tArgs){
 				printf("unable to lock this project\n");
 				return NULL;
 			}
+			printf("locked\n");
 			locked = 1;
 			break;
 		}
@@ -848,6 +869,7 @@ void * checkPush(void * tArgs){
 		printf("Directory %s cannot be opened\n", path);
 		send(sock, "dont", 50, 0);
 		printf("sent dont\n");
+		pthread_mutex_unlock(&(ptr->lock));
 		return NULL;
 	}
 	send(sock, "send", 50, 0);

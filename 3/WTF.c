@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
@@ -156,7 +155,7 @@ struct node* createManifestList(char * manifestPath, struct node * head){
 	
 	int len = strlen(manifestPath);
 	char *last_two = &manifestPath[len-2];
-	if(strcmp(last_two, "_s") == 0){
+	if(strcmp(last_two, "_S") == 0){
 		numFiles_s = num;
 		versionNum_s = vNum;	
 	}else{
@@ -395,7 +394,7 @@ void updateCommand(char * project, char* clientManifestPath, int sock){
 	int size = atoi(buffer);
 	char * manifest = malloc(14 + strlen(project));
 	strcpy(manifest, project);
-	strcat(manifest, "/.Manifest_s");
+	strcat(manifest, "/.Manifest_S");
 	int fd = open(manifest, O_CREAT | O_RDWR | O_TRUNC, S_IWUSR | S_IRUSR);
 	
 	int remaining = size;
@@ -598,7 +597,7 @@ int configure(char * ip, char * port){
 int createManifestS(char * projDir, int sock, int size){
 	char * manifestS = malloc(14 + strlen(projDir));
 	strcpy(manifestS, projDir);
-	strcat(manifestS, "/.Manifest_S");
+	strcat(manifestS, "/.ManifestS");
 	int fd = open(manifestS, O_CREAT | O_RDWR | O_TRUNC, S_IWUSR | S_IRUSR);
 	char * incoming = malloc(size + 1);
 	int remaining = size;
@@ -726,7 +725,7 @@ int commit(char * name, int sock){
 	FILE * sfd;
 	char * serverMan = malloc(14 + strlen(projDir));
 	strcpy(serverMan, projDir);
-	strcat(serverMan, "/.Manifest_S");
+	strcat(serverMan, "/.ManifestS");
 	
 	cfd = fopen(clientMan, "r");
 	sfd = fopen(serverMan, "r");
@@ -768,6 +767,62 @@ int commit(char * name, int sock){
 	}
 }
 
+char * updateManifestS(char * projDir){
+	char * commit = malloc(strlen(projDir) + 15);
+	char * manifest = malloc(strlen(projDir) + 15);
+	
+	strcpy(commit, projDir);
+	strcat(commit, "/.commit\0");
+	strcpy(manifest, projDir);
+	strcat(manifest, "/.ManifestS\0");
+	
+	struct node * head = NULL;
+	
+	head = createManifestList(manifest, head);
+	
+	int file = open(commit, O_RDONLY);
+	struct stat fileStat;
+	char fileSize[100];
+	fstat(file, &fileStat);
+	int size = fileStat.st_size;
+	close(file);
+	
+	FILE * fd = fopen(commit, "r");
+	char * line = malloc(size + 1);
+	char * command = malloc(2);
+	char * hash = malloc(2*SHA256_DIGEST_LENGTH + 1);
+	char * filePath = malloc(size + 1);
+	char * version = malloc(10);
+	
+	while(fgets(line, size, fd) != NULL){
+		printf("read %s\ntotal file is this big %d\n", line, size);
+		sscanf(line, "%s\t%s\t%s\t%s", command, version, filePath, hash);
+		if(strcmp(command, "D") == 0){
+			numFiles = numFiles - 1;
+			head = removeFileFromList(filePath, head);
+			continue;
+		}
+		if(strcmp(command, "A") == 0){
+			head = addFileToList(atoi(version), filePath, hash, head, NULL);
+			numFiles = numFiles + 1;
+			continue;
+		}
+		
+		struct node * ptr = head;
+		while(ptr != NULL){
+			if(strcmp(filePath, ptr->filePath) == 0){
+				ptr->version = ptr->version + 1;
+				ptr->hashcode = hash;
+				break;
+			}
+			ptr = ptr->next;
+		}
+	}
+	versionNum = versionNum + 1;
+	writeToManifest(manifest, head, 0);
+	return manifest;
+}
+
 int push(char * name, int sock){
 	char * projDir = malloc(3 + strlen(name));
 	strcpy(projDir, "./\0");
@@ -779,9 +834,9 @@ int push(char * name, int sock){
 		return 0;
 	}
 	
-	 char * commitDir = malloc(12 + strlen(projDir));
-	 strcpy(commitDir, projDir);
-	 strcat(commitDir, "/.commit\0");
+	char * commitDir = malloc(12 + strlen(projDir));
+	strcpy(commitDir, projDir);
+	strcat(commitDir, "/.commit\0");
 	 
 	struct stat st2 = {0};
 	if (stat(commitDir, &st2) == -1) {
@@ -840,9 +895,7 @@ int push(char * name, int sock){
 			send(sock, version, 10, 0);
 			send(sock, filePath, size, 0);
 			send(sock, hash, 2*SHA256_DIGEST_LENGTH, 0);
-			if(strcmp(command, "D") == 0){
-				
-			}else{
+			if(strcmp(command, "D") != 0){
 				char * fullPath = malloc(strlen(projDir) + strlen(filePath) + 3);
 				strcpy(fullPath, projDir);
 				strcat(fullPath, "/\0");
@@ -864,7 +917,32 @@ int push(char * name, int sock){
 				close(file);
 			}
 		}
+		close(file);
+		fclose(fd);
+		send(sock, "M", 2, 0);
+		send(sock, "0", 10, 0);
+		send(sock, "0", size, 0);
+		send(sock, "0", 2*SHA256_DIGEST_LENGTH, 0);
+		char * manifestS = updateManifestS(projDir);
+		printf("%s manifest s\n", manifestS);
+		int mfd = open(manifestS, O_RDONLY);
+		struct stat mfStat;
+		char mSize[50];
+		fstat(mfd, &mfStat);
+		sprintf(mSize, "%d", mfStat.st_size);
+		
+		int n = send(sock, mSize, 50, 0);
+		int manifestSize = mfStat.st_size;
+		printf("%d     manifest is this big %s\n", n, mSize);
+		
+		int num;
+		int left = manifestSize;
+		while( (left > 0) && ((num = sendfile(sock, mfd, NULL, manifestSize)) > 0) ){
+			printf("sent %d\n", num);
+			left = left - num;
+		}
 		send(sock, "Z", 2, 0);
+		//close(mfd);
 	}
 }
 
