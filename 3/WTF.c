@@ -706,8 +706,8 @@ int commit(char * name, int sock){
 	char * update = malloc(10 + strlen(projDir));
 	strcpy(update, projDir);
 	strcat(update, "/.Update");
-	st = {0};
-	if (stat(update, &st) != -1) {
+	struct stat st1 = {0};
+	if(stat(update, &st1) != -1) {
 		printf("Cannot commit with an active update file\n");
 		send(sock, "invalid", 50, 0);
 		return 0;
@@ -841,7 +841,7 @@ int push(char * name, int sock){
 	strcpy(projDir, "./\0");
 	strcat(projDir, name);
 	
-	struct stat st1 = {0};
+	struct stat st1 = {0}; //checks if project exists in local
 	if (stat(projDir, &st1) == -1) {
 		printf("Project does not exist in local, nothing to push\n");
 		send(sock, "invalid", 50, 0);
@@ -851,7 +851,7 @@ int push(char * name, int sock){
 	strcpy(updateDir, projDir);
 	strcat(updateDir, "/.Update");
 	
-	struct stat st3 = {0};
+	struct stat st3 = {0}; //checks if .update file has any M codes
 	if (stat(updateDir, &st3) == 1) {
 		
 		int file = open(updateDir, O_RDONLY);
@@ -880,7 +880,7 @@ int push(char * name, int sock){
 	strcpy(commitDir, projDir);
 	strcat(commitDir, "/.commit\0");
 	 
-	struct stat st2 = {0};
+	struct stat st2 = {0};  //looks for a .commit
 	if (stat(commitDir, &st2) == -1) {
 		printf("Commit does not exist, please commit first before pushing\n");
 		send(sock, "invalid", 50, 0);

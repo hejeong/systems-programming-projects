@@ -741,7 +741,7 @@ int push(char * dirp, int sock){
 	recv(sock, commitSize, 100, 0);
 	int totalSize = atoi(commitSize);
 	free(commitSize);
-	while(1){
+	while(1){ //repeatedly receives commit lines from client until client says no more
 		char command[2];
 		char version[10];
 		int size;
@@ -755,18 +755,16 @@ int push(char * dirp, int sock){
 		strcpy(fullPath, dirp);
 		strcat(fullPath, "/\0");
 		strcat(fullPath, path);
-		//printf("%s\t%s\t%s\t%s\n", command, version, fullPath, hash);
 		if(strcmp(command, "Z") == 0){
-			printf("out\n");
 			break;
 		}
 		
-		if(strcmp(command, "D") == 0){
+		if(strcmp(command, "D") == 0){  //deletes the file marked for deletion
 			remove(fullPath);
 			continue;
 		}
 		
-		if(strcmp(command, "A") == 0){
+		if(strcmp(command, "A") == 0){  //creates the directory for the file client sends
 			makeDirectories(fullPath);
 			char fileSize[100];
 			recv(sock, fileSize, 100, 0);
@@ -783,7 +781,7 @@ int push(char * dirp, int sock){
 			}
 			close(fd);
 			free(incoming);
-		}else if(strcmp(command, "M") == 0){
+		}else if(strcmp(command, "M") == 0){  //creates the new manifest the client sends
 			char manifestSize[50];
 			int n = recv(sock, manifestSize, 50, 0);
 			int size = atoi(manifestSize);
@@ -803,7 +801,7 @@ int push(char * dirp, int sock){
 			close(file);
 			free(manifest);
 			free(incoming);
-		}else if(strcmp(command, "U") == 0){
+		}else if(strcmp(command, "U") == 0){  //updates an existing file to the file client sends
 			char fileSize[100];
 			recv(sock, fileSize, 100, 0);
 			int size = atoi(fileSize);
@@ -921,12 +919,12 @@ void * checkPush(void * tArgs){
 		pthread_mutex_unlock(&(ptr->lock));
 		return NULL;
 	}
-	send(sock, "send", 50, 0);
+	send(sock, "send", 50, 0); //tells the client to send the hashcode of the commit file its trying to push
 	
 	char * code = malloc(256);
 	int received = recv(sock, code, 256, 0);
 	printf("%s\n%d\n", code, received);
-	while((dent = readdir(dir)) != NULL){
+	while((dent = readdir(dir)) != NULL){ //compares the commit file client just sent with all active commit files in preparation of push
 		if(!strcmp(".", dent->d_name) || !strcmp("..", dent->d_name)){
 			continue;	
 		}
@@ -939,8 +937,10 @@ void * checkPush(void * tArgs){
 		char hashcode[2*SHA256_DIGEST_LENGTH];
 		strcpy(hashcode,readFileAndHash(commit, hashcode));
 		printf("%s\n%d\n", code, received);
-		if(strcmp(code, hashcode) == 0){
+		if(strcmp(code, hashcode) == 0){ //prepares to push if the hashcodes of a commit file and the client commit match
 			prepPush(dirp, ver, sock);
+			closedir(dir);
+			destroy(path);//deletes the commits folder
 			pthread_mutex_unlock(&(ptr->lock));
 			free(code);
 			free(commit);
@@ -951,6 +951,7 @@ void * checkPush(void * tArgs){
 		}
 	}
 	send(sock, "no match", 50, 0);
+	closedir(dir);
 	free(code);
 	free(dirp);
 	free(path);
