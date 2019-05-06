@@ -953,6 +953,33 @@ int push(char * name, int sock){
 	}
 }
 
+int currentVersion(char * name, int sock){
+	send(sock, "currentVersion", 50, 0);
+	send(sock, name, 2000, 0);
+	char sizeStr[10];
+	recv(sock, sizeStr, 50, 0);
+	int size = atoi(sizeStr);
+	if(size == 0){
+		printf("Project does not exist on the server\n");
+		return 0;
+	}
+	while(1){
+		char inc[2];
+		recv(sock, inc, 2, 0);
+		if(strcmp(inc, "R") == 0){
+			char * line = malloc(size + 1);
+			char * version = malloc(10);
+			char * filePath = malloc(size);
+			recv(sock, line, size, 0);
+			sscanf(line, "%s\t%s\t%*s", version, filePath);
+			printf("File: %s ----------- Version: %s\n", filePath, version);
+		}else{
+			break;
+		}
+	}
+	
+}
+
 int main(int argc, char ** argv){
 	if(!(argc >= 2)){
 		printf("Please enter a command\n");
@@ -1048,6 +1075,8 @@ int main(int argc, char ** argv){
 		rollback(name, socketfd, argv[3]);
 	}else if(strcmp(command, "commit") == 0){
 		commit(name, socketfd);
+	}else if(strcmp(command, "currentversion") == 0){
+		currentVersion(name, socketfd);
 	}else if(strcmp(command, "push") == 0){
 		push(name, socketfd);
 	}else if(strcmp(command, "update") == 0){

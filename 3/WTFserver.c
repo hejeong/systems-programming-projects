@@ -197,7 +197,7 @@ void * create(void * tArgs){
 	}
 	
 	struct node * ptr = malloc(sizeof(struct node));
-	ptr->name = malloc(strlen(name));
+	ptr->name = malloc(strlen(name) + 1);
 	strcpy(ptr->name, name);
 	ptr->next = keychain;
 	keychain = ptr;
@@ -235,13 +235,15 @@ void * create(void * tArgs){
 	}
 	
 	close(fd);
-	
+	free(manifest);
+	free(projDir);
+	free(name);
+	free(verDir);
 	pthread_mutex_unlock(&masterLock);
 	return NULL;
 }
 
 void * destroy(char * currentDir){
-	printf("%s\n", currentDir);
 	DIR *dir;
 	struct dirent *dent;
 	char buffer[1000];
@@ -309,6 +311,7 @@ void * destroyP(void * tArgs){
 	
 	int locked = 0;
 	struct node * ptr = keychain;
+	struct node * prev = keychain;
 	while(ptr != NULL){
 		if(strcmp(ptr->name, name) == 0){
 			if(pthread_mutex_lock(&(ptr->lock)) != 0){
@@ -320,6 +323,8 @@ void * destroyP(void * tArgs){
 			locked = 1;
 			break;
 		}
+		prev = ptr;
+		ptr = ptr->next;
 	}
 	if(locked != 1){
 		printf("Could not find the lock for this project\n");
@@ -329,7 +334,15 @@ void * destroyP(void * tArgs){
 	destroy(projDir);
 	send(sock, "success\0", 8, 0);
 	pthread_mutex_unlock(&(ptr->lock));
+	
+	if(ptr == keychain){
+		keychain = ptr->next;
+	}else{
+		prev->next = ptr->next;
+	}
+	
 	pthread_mutex_unlock(&masterLock);
+	
 	return NULL;
 }
 
@@ -372,6 +385,7 @@ int sendAll(char * dir, int sock){
 			remaining = remaining - sent;
 		}
 		close(currentFd);
+		free(file);
 	}
 	fclose(fd);
 	int mfd = open(manifest, O_RDONLY);
@@ -388,6 +402,8 @@ int sendAll(char * dir, int sock){
 	while( (mremaining > 0) && ((msent = sendfile(sock, mfd, NULL, 1000)) > 0) ){
 		mremaining = mremaining - msent;
 	}
+	free(manifest);
+	
 	return 0; 
 }
 
@@ -448,6 +464,9 @@ void * checkout(void * tArgs){
 	strcat(projDir, version);
 	strcat(projDir, "/\0");
 	sendAll(projDir, sock);
+	free(projDir);
+	free(dirp);
+	free(name);
 	pthread_mutex_unlock(&(ptr->lock));
 	return NULL;
 }
@@ -490,6 +509,10 @@ void * rollback(void * tArgs){
 	//graceful error if dir can't be opened
 	if(dir == NULL){
 		printf("Directory %s cannot be opened\n", projDir);
+		send(sock, "error", 50, 0);
+		free(name);
+		free(projDir);
+		pthread_mutex_unlock(&(ptr->lock));
 		return NULL;
 	}
 	int rolled = 0;
@@ -506,6 +529,7 @@ void * rollback(void * tArgs){
 			strcat(delete, "/\0");
 			strcat(delete, dent->d_name);
 			destroy(delete);
+			free(delete);
 		}
 	}
 	if(rolled == 0){
@@ -513,6 +537,8 @@ void * rollback(void * tArgs){
 	}else{
 		send(sock, "success", 30, 0);
 	}
+	free(name);
+	free(projDir);
 	pthread_mutex_unlock(&(ptr->lock));
 	return NULL;
 }
@@ -645,8 +671,12 @@ void * commit(void * tArgs){
 		remaining = remaining - written;
 	}
 	close(fd);
-	close(sock);
 	pthread_mutex_unlock(&(ptr->lock));
+	free(commit);
+	free(incoming);
+	free(manifest);
+	free(dirp);
+	free(name);
 	return NULL;
 }
 
@@ -698,6 +728,8 @@ int duplicate(char * oldDir, char * newDir){
 			fclose(fdr);
 			fclose(fdw);
 		}
+		free(path);
+		free(newDirP);
 	}
 	closedir(dir);
 	return 1;
@@ -708,6 +740,7 @@ int push(char * dirp, int sock){
 	char * commitSize = malloc(100);
 	recv(sock, commitSize, 100, 0);
 	int totalSize = atoi(commitSize);
+	free(commitSize);
 	while(1){
 		char command[2];
 		char version[10];
@@ -749,6 +782,7 @@ int push(char * dirp, int sock){
 				remaining = remaining - written;
 			}
 			close(fd);
+			free(incoming);
 		}else if(strcmp(command, "M") == 0){
 			char manifestSize[50];
 			int n = recv(sock, manifestSize, 50, 0);
@@ -767,6 +801,8 @@ int push(char * dirp, int sock){
 				remaining = remaining - written;
 			}
 			close(file);
+			free(manifest);
+			free(incoming);
 		}else if(strcmp(command, "U") == 0){
 			char fileSize[100];
 			recv(sock, fileSize, 100, 0);
@@ -782,9 +818,13 @@ int push(char * dirp, int sock){
 				remaining = remaining - written;
 			}
 			close(fd);
+			free(incoming);
 		}else{
 			printf("invalid command from commit file\n");
 		}
+		free(path);
+		free(hash);
+		free(fullPath);
 	}
 	return 0;
 }
@@ -807,6 +847,8 @@ int prepPush(char * dirp, int ver, int sock){
 	if(duplicate(oldDir, newDir) == 1){
 		push(newDir, sock);
 	}
+	free(newDir);
+	free(oldDir);
 	return 0;
 }
 
@@ -842,11 +884,12 @@ void * checkPush(void * tArgs){
 	int ver = 1;
 	//open directory
 	dir = opendir(dirp);
-	char * projDir = malloc(strlen(dirp) + 1);
-	strcpy(projDir, dirp);
 	//graceful error if dir can't be opened
 	if(dir == NULL){
 		printf("Directory %s cannot be opened\n", dirp);
+		send(sock, "error", 50, 0);
+		free(name);
+		free(dirp);
 		return NULL;
 	}
 	//finds the latest version number
@@ -897,12 +940,110 @@ void * checkPush(void * tArgs){
 		strcpy(hashcode,readFileAndHash(commit, hashcode));
 		printf("%s\n%d\n", code, received);
 		if(strcmp(code, hashcode) == 0){
-			prepPush(projDir, ver, sock);
+			prepPush(dirp, ver, sock);
 			pthread_mutex_unlock(&(ptr->lock));
+			free(code);
+			free(commit);
+			free(dirp);
+			free(path);
+			free(name);
 			return NULL;
 		}
 	}
 	send(sock, "no match", 50, 0);
+	free(code);
+	free(dirp);
+	free(path);
+	free(name);
+	pthread_mutex_unlock(&(ptr->lock));
+	return NULL;
+}
+
+void * currentVersion(void * tArgs){
+	struct multiArgs * args = (struct multiArgs *) tArgs;
+	char * name = malloc(strlen(args->name) + 1);
+	char * dirp = malloc(strlen(args->dir) + 1);
+	int sock = args->socket;
+	
+	strcpy(name, args->name);
+	strcpy(dirp, args->dir);
+	
+	int locked = 0;
+	struct node * ptr = keychain;
+	while(ptr != NULL){
+		if(strcmp(ptr->name, name) == 0){
+			if(pthread_mutex_lock(&(ptr->lock)) != 0){
+				printf("unable to lock this project\n");
+				return NULL;
+			}
+			printf("locked\n");
+			locked = 1;
+			break;
+		}
+	}
+	
+	if(locked != 1){
+		printf("Could not find the lock for this project\n");
+		return NULL;
+	}
+	
+	DIR *dir;
+	struct dirent *dent;
+	int ver = 1;
+	//open directory
+	dir = opendir(dirp);
+	//graceful error if dir can't be opened
+	if(dir == NULL){
+		printf("Directory %s cannot be opened\n", dirp);
+		send(sock, "0", 50, 0);
+		free(name);
+		free(dirp);
+		pthread_mutex_unlock(&(ptr->lock));
+		return NULL;
+	}
+	//finds the latest version number
+	while((dent = readdir(dir)) != NULL){
+		// skip over [.] and [..]
+		if(!strcmp(".", dent->d_name) || !strcmp("..", dent->d_name)){
+			continue;	
+		}
+		int check;
+		check = atoi(dent->d_name);
+		if(check > ver){
+			ver = check;
+		}
+	}
+	closedir(dir);
+	char version[10];
+	sprintf(version, "%d", ver);
+	char * path = malloc(strlen(dirp) + strlen(version) + 15);
+	strcpy(path, dirp);
+	strcat(path, "/\0");
+	strcat(path, version);
+	strcat(path, "/.Manifest");
+	
+	int file = open(path, O_RDONLY);
+	struct stat fileStat;
+	fstat(file, &fileStat);
+	int size = fileStat.st_size;
+	close(file);
+	
+	FILE * fd = fopen(path, "r");
+	char * line = malloc(size + 1);
+	char * sizeStr = malloc(50);
+	sprintf(sizeStr, "%d", size);
+	send(sock, sizeStr, 50, 0);
+	fgets(line, size, fd);
+	while(fgets(line, size, fd) != NULL){
+		send(sock, "R", 2, 0);
+		int n = send(sock, line, size, 0);
+	}
+	send(sock, "S", 2, 0);
+	free(sizeStr);
+	free(line);
+	free(path);
+	free(name);
+	free(dirp);
 	pthread_mutex_unlock(&(ptr->lock));
 	return NULL;
 }
@@ -1016,6 +1157,9 @@ int main(int argc, char** argv){
 			}else if(strcmp(command, "upgrade") == 0){
 				pthread_t id;
 				pthread_create(&id, NULL, upgrade, (void *) args);
+			}else if(strcmp(command, "currentVersion") == 0){
+				pthread_t id;
+				pthread_create(&id, NULL, currentVersion, (void *) args);
 			}
 		}
 	}
