@@ -847,6 +847,34 @@ int push(char * name, int sock){
 		send(sock, "invalid", 50, 0);
 		return 0;
 	}
+	char * updateDir = malloc(12 + strlen(projDir));
+	strcpy(updateDir, projDir);
+	strcat(updateDir, "/.Update");
+	
+	struct stat st3 = {0};
+	if (stat(updateDir, &st3) == 1) {
+		
+		int file = open(updateDir, O_RDONLY);
+		struct stat fileStat;
+		char fileSize[100];
+		fstat(file, &fileStat);
+		int size = fileStat.st_size;
+		close(file);
+		
+		FILE * update = fopen(updateDir, "r");
+		char * line = malloc(size + 1);
+		char * command = malloc(2);
+		fgets(line, size, update);
+		while(fgets(line, size, update) != NULL){
+			sscanf(line, "%s", command);
+			if(strcmp(command, "M") == 0){
+				send(sock, "invalid", 50, 0);
+				printf("Files were modified since the last upgrade\n");
+				return 0;
+			}
+		}
+		
+	}
 	
 	char * commitDir = malloc(12 + strlen(projDir));
 	strcpy(commitDir, projDir);
