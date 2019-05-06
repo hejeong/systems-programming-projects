@@ -151,7 +151,7 @@ struct node* createManifestList(char * manifestPath, struct node * head){
      	  perror("Error opening file");
      	  return 0;
   	}
-	fscanf(fp, "%d\t%d", &num, &vNum);
+	fscanf(fp, "%d\t%d\n", &num, &vNum);
 	
 	int len = strlen(manifestPath);
 	char *last_two = &manifestPath[len-2];
@@ -648,9 +648,7 @@ int compCommit(struct node * cHead, struct node * sHead, char * projDir){
 	struct node * cprev = cptr;
 	struct node * sprev = sptr;
 	while(cptr != NULL && sptr != NULL){
-		printf("loop1\n");
 		while(sptr != NULL){
-			printf("loop2\n");
 			if(strcmp(cptr->filePath, sptr->filePath) == 0){
 				if(strcmp(cptr->hashcode, sptr->hashcode) != 0){
 					if(cptr->version > sptr->version){
@@ -701,6 +699,16 @@ int commit(char * name, int sock){
 	struct stat st = {0};
 	if (stat(projDir, &st) == -1) {
 		printf("Project does not exist in local, nothing to commit\n");
+		send(sock, "invalid", 50, 0);
+		return 0;
+	}
+	
+	char * update = malloc(10 + strlen(projDir));
+	strcpy(update, projDir);
+	strcat(update, "/.Update");
+	st = {0};
+	if (stat(update, &st) != -1) {
+		printf("Cannot commit with an active update file\n");
 		send(sock, "invalid", 50, 0);
 		return 0;
 	}
@@ -931,7 +939,6 @@ int push(char * name, int sock){
 		send(sock, "0", size, 0);
 		send(sock, "0", 2*SHA256_DIGEST_LENGTH, 0);
 		char * manifestS = updateManifestS(projDir);
-		printf("%s manifest s\n", manifestS);
 		int mfd = open(manifestS, O_RDONLY);
 		struct stat mfStat;
 		char mSize[50];
@@ -948,8 +955,19 @@ int push(char * name, int sock){
 			printf("sent %d\n", num);
 			left = left - num;
 		}
-		send(sock, "Z", 2, 0);
 		close(mfd);
+		send(sock, "Z", 2, 0);
+		char * originalManifest = malloc(strlen(projDir) + 10);
+		strcpy(originalManifest, projDir);
+		strcat(originalManifest, "/.Manifest");
+		FILE * fdms = fopen(manifestS, "r");
+		FILE * fdm = fopen(originalManifest, "w");
+		char c;
+		while((c = fgetc(fdms)) != EOF){
+			fwrite(&c, 1, 1, fdm);
+		}
+		fclose(fdms);
+		fclose(fdm);
 	}
 }
 

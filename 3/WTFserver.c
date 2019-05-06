@@ -720,7 +720,7 @@ int duplicate(char * oldDir, char * newDir){
 			char c;
 			FILE * fdr;
 			FILE * fdw;
-			fdr = fopen(path, "r"); // read mode
+			fdr = fopen(path, "r");
 			fdw = fopen(newDirP, "w");
 			while((c = fgetc(fdr)) != EOF){
 				fwrite(&c, 1, 1, fdw);
