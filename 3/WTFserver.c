@@ -492,6 +492,7 @@ void * rollback(void * tArgs){
 		printf("Directory %s cannot be opened\n", projDir);
 		return NULL;
 	}
+	int rolled = 0;
 	while((dent = readdir(dir)) != NULL){
 		// skip over [.] and [..]
 		if(!strcmp(".", dent->d_name) || !strcmp("..", dent->d_name)){
@@ -499,6 +500,7 @@ void * rollback(void * tArgs){
 		}
 		int check = atoi(dent->d_name);
 		if(check > ver){
+			rolled = 1;
 			char * delete = malloc(strlen(projDir) + strlen(dent->d_name) + 3);
 			strcpy(delete, projDir);
 			strcat(delete, "/\0");
@@ -506,7 +508,11 @@ void * rollback(void * tArgs){
 			destroy(delete);
 		}
 	}
-	send(sock, "success\0", 30, 0);
+	if(rolled == 0){
+		send(sock, "nochange", 30, 0);
+	}else{
+		send(sock, "success", 30, 0);
+	}
 	pthread_mutex_unlock(&(ptr->lock));
 	return NULL;
 }
@@ -946,11 +952,11 @@ int main(int argc, char** argv){
 		char command[50];
 		recv(comm, command, 50, 0);
 		char name[2000];
-		recv(comm, name, 2000, 0);
 		if(strcmp(command, "invalid") == 0){
 			printf("client has input an invalid command\n");
 			continue;
 		}else{
+			recv(comm, name, 2000, 0);
 			printf("client wants to %s %s\n", command, name);
 		}
 		

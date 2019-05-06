@@ -316,7 +316,6 @@ struct node * compareManifests(char * project, struct node * c_head, struct node
 int create(char * name, int sock){
 	
 	send(sock, "create", 50, 0);
-	sleep(1);
 	send(sock, name, 2000, 0);
 	char buffer[1000];
 	recv(sock, buffer, 1000, 0);
@@ -356,7 +355,6 @@ int create(char * name, int sock){
 
 int destroy(char * name, int sock){
 	send(sock, "destroy", 50, 0);
-	sleep(1);
 	send(sock, name, 2000, 0);
 	char buffer[1000];
 	recv(sock, buffer, 1000, 0);
@@ -517,10 +515,10 @@ int checkout(char * name, int sock){
 		mkdir(projDir, 0700);
 	}else{
 		printf("Project already exists in local, please delete local copy of this project and use checkout again\n");
+		send(sock, "invalid", 50, 0);
 		return 0;
 	}
 	send(sock, "checkout", 50, 0);
-	sleep(1);
 	send(sock, name, 2000, 0);
 	char buffer[1000];
 	recv(sock, buffer, 20, 0);
@@ -573,16 +571,23 @@ int checkout(char * name, int sock){
 }
 
 int rollback(char * name, int sock, char * version){
+	int ver = atoi(version);
+	if(ver < 1){
+		printf("Invalid version number\n");
+		send(sock, "invalid", 50, 0);
+		return 0;
+	}
 	send(sock, "rollback", 50, 0);
-	sleep(1);
 	send(sock, name, 2000, 0);
 	send(sock, version, 100, 0);
 	char buffer[30];
 	recv(sock, buffer, 30, 0);
 	if(strcmp(buffer, "error") == 0){
 		printf("This project does not exist on the server\n");
-	}else{
+	}else if(strcmp(buffer,"success") == 0){
 		printf("Successfully rolled back\n");
+	}else{
+		printf("Version number is higher than existing version, no changes have been made\n");
 	}
 	return 0;
 }
@@ -696,11 +701,11 @@ int commit(char * name, int sock){
 	struct stat st = {0};
 	if (stat(projDir, &st) == -1) {
 		printf("Project does not exist in local, nothing to commit\n");
+		send(sock, "invalid", 50, 0);
 		return 0;
 	}
 	
 	send(sock, "commit", 50, 0);
-	sleep(1);
 	send(sock, name, 2000, 0);
 	char sizeStr[100];
 	recv(sock, sizeStr, 100, 0);
@@ -831,6 +836,7 @@ int push(char * name, int sock){
 	struct stat st1 = {0};
 	if (stat(projDir, &st1) == -1) {
 		printf("Project does not exist in local, nothing to push\n");
+		send(sock, "invalid", 50, 0);
 		return 0;
 	}
 	
@@ -841,6 +847,7 @@ int push(char * name, int sock){
 	struct stat st2 = {0};
 	if (stat(commitDir, &st2) == -1) {
 		printf("Commit does not exist, please commit first before pushing\n");
+		send(sock, "invalid", 50, 0);
 		return 0;
 	}
 	
@@ -942,15 +949,28 @@ int push(char * name, int sock){
 			left = left - num;
 		}
 		send(sock, "Z", 2, 0);
-		//close(mfd);
+		close(mfd);
 	}
 }
 
 int main(int argc, char ** argv){
+	if(!(argc >= 2)){
+		printf("Please enter a command\n");
+		return 0;
+	}
 	char * command = malloc(strlen(argv[1]) + 1);
 	strcpy(command, argv[1]);
 	if(strcmp(command, "configure") == 0){
+		if(argc != 4){
+			printf("Invalid number of arguments for configure\n");
+			return 0;
+		}
 		configure(argv[2], argv[3]);
+		return 0;
+	}
+	
+	if(!(argc >= 3)){
+		printf("Please enter a project name\n");
 		return 0;
 	}
 	char * name = malloc(strlen(argv[2]) + 1);
@@ -962,6 +982,10 @@ int main(int argc, char ** argv){
 	}
 	
 	if(strcmp(command, "remove") == 0 || strcmp(command, "add") == 0){
+		if(argc != 4){
+			printf("Invalid number of arguments for %s\n", command);
+			return 0;
+		}
 		char *manifestPath;
 		char *filePath;
 		manifestPath = (char*)malloc((strlen(name)+strlen("manifest")+2)*sizeof(char));
@@ -1016,6 +1040,11 @@ int main(int argc, char ** argv){
 	}else if(strcmp(command, "checkout") == 0){
 		checkout(name, socketfd);
 	}else if(strcmp(command, "rollback") == 0){
+		if(!(argc >= 4)){
+			printf("Invalid number of arguments for rollback\n");
+			send(socketfd, "invalid", 50, 0);
+			return 0;
+		}
 		rollback(name, socketfd, argv[3]);
 	}else if(strcmp(command, "commit") == 0){
 		commit(name, socketfd);
