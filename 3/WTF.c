@@ -1093,7 +1093,7 @@ int main(int argc, char ** argv){
 	
 	address.sin_family = AF_INET;
 	address.sin_port = htons(port);
-	//addr.sin_addr.s_addr = inet_addr(ip);
+	addr.sin_addr.s_addr = inet_addr(ip);
 
 	int socketfd = socket(AF_INET,SOCK_STREAM, 0);
 	if (socketfd <= 0){
