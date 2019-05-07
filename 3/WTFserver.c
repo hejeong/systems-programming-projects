@@ -100,48 +100,97 @@ int makeDirectories(char * dir){
 }
 
 void * upgrade(void * tArgs){
-	printf("SUH\n");
 	struct multiArgs * args = (struct multiArgs *) tArgs;
 	char * projDir = malloc(strlen(args->dir) + 1);
+	char * name = malloc(strlen(args->name) + 1);
 	char fileName[1000];
 	int sock = args->socket;
 	strcpy(projDir, args->dir);
-	recv(sock, fileName, 1000, 0);
-	DIR *dir;
-	struct dirent *dent;
-	struct dirent *last_dent;
-	dir = opendir(projDir);
-	//find most recent dir
-	while((dent = readdir(dir)) != NULL){
-		last_dent = dent;
+	strcpy(name, args->name);
+	int locked = 0;
+	struct node * ptr = keychain;
+	while(ptr != NULL){
+		if(strcmp(ptr->name, name) == 0){
+			if(pthread_mutex_lock(&(ptr->lock)) != 0){
+				printf("unable to lock this project\n");
+				send(sock, "error", 8, 0);
+				pthread_mutex_unlock(&masterLock);
+				return NULL;
+			}
+			locked = 1;
+			break;
+		}
 	}
-	char * filePath = malloc((strlen(projDir) + strlen(last_dent->d_name) + strlen(fileName) + 3)*sizeof(char));
-	strcpy(filePath, projDir);
-	strcat(filePath, "/");
-	strcat(filePath, last_dent->d_name);
-	strcat(filePath, "/");
-	strcat(filePath, fileName);
-	int fd = open(filePath, O_RDONLY);
+	if(locked != 1){
+		printf("Could not find the lock for this project\n");
+		send(sock, "error", 8, 0);
+		return NULL;
+	}
+	
+	while(1){
+		recv(sock, fileName, 1000, 0);
+		if(strcmp(fileName, "NA") == 0){
+			break;
+		}
+		DIR *dir;
+		struct dirent *dent;
+		struct dirent *last_dent;
+		dir = opendir(projDir);
+		//find most recent dir
+		while((dent = readdir(dir)) != NULL){
+			last_dent = dent;
+		}
+		char * filePath = malloc((strlen(projDir) + strlen(last_dent->d_name) + strlen(fileName) + 3)*sizeof(char));
+		strcpy(filePath, projDir);
+		strcat(filePath, "/");
+		strcat(filePath, last_dent->d_name);
+		strcat(filePath, "/");
+		strcat(filePath, fileName);
+		int fd = open(filePath, O_RDONLY);
 
-	struct stat fileStat;
-	char fileSize[1000];
-	fstat(fd, &fileStat);
-	sprintf(fileSize, "%d", fileStat.st_size);
-	send(sock, fileSize, strlen(fileSize), 0);
-	sleep(1);
-	int sent;
-	int remaining = fileStat.st_size;
-	while( (remaining > 0) && ((sent = sendfile(sock, fd, NULL, 1000)) > 0) ){
-		remaining = remaining - sent;	
+		struct stat fileStat;
+		char fileSize[1000];
+		fstat(fd, &fileStat);
+		sprintf(fileSize, "%d", fileStat.st_size);
+		send(sock, fileSize, 1000, 0);
+		sleep(1);
+		int sent;
+		int remaining = fileStat.st_size;
+		while( (remaining > 0) && ((sent = sendfile(sock, fd, NULL, 1000)) > 0) ){
+			remaining = remaining - sent;	
+		}
+		close(fd);
 	}
-	close(fd);
+	pthread_mutex_unlock(&(ptr->lock));
 	return NULL;
 }
 void * update(void * tArgs){
 	struct multiArgs * args = (struct multiArgs *) tArgs;
 	char * projDir = malloc(strlen(args->dir) + 1);
+	char * name = malloc(strlen(args->name) + 1);
 	int sock = args->socket;
 	strcpy(projDir, args->dir);
+	strcpy(name, args->name);
+	
+	int locked = 0;
+	struct node * ptr = keychain;
+	while(ptr != NULL){
+		if(strcmp(ptr->name, name) == 0){
+			if(pthread_mutex_lock(&(ptr->lock)) != 0){
+				printf("unable to lock this project\n");
+				send(sock, "error", 8, 0);
+				pthread_mutex_unlock(&masterLock);
+				return NULL;
+			}
+			locked = 1;
+			break;
+		}
+	}
+	if(locked != 1){
+		printf("Could not find the lock for this project\n");
+		send(sock, "error", 8, 0);
+		return NULL;
+	}
 	
 	DIR *dir;
 	struct dirent *dent;
@@ -170,6 +219,54 @@ void * update(void * tArgs){
 		remaining = remaining - sent;
 	}
 	close(fd);
+	pthread_mutex_unlock(&(ptr->lock));
+	return NULL;
+}
+
+void * history(void * tArgs){
+	struct multiArgs * args = (struct multiArgs *) tArgs;
+	char * projDir = malloc(strlen(args->dir) + 1);
+	char * name = malloc(strlen(args->name) + 1);
+	int sock = args->socket;
+	strcpy(projDir, args->dir);
+	strcpy(name, args->name);
+	char * historyPath = malloc((strlen(projDir)+strlen("/.History") + 2));
+	strcpy(historyPath, projDir);
+	strcat(historyPath, "/.History");
+	int locked = 0;
+	struct node * ptr = keychain;
+	while(ptr != NULL){
+		if(strcmp(ptr->name, name) == 0){
+			if(pthread_mutex_lock(&(ptr->lock)) != 0){
+				printf("unable to lock this project\n");
+				send(sock, "error", 8, 0);
+				pthread_mutex_unlock(&masterLock);
+				return NULL;
+			}
+			locked = 1;
+			break;
+		}
+	}
+	if(locked != 1){
+		printf("Could not find the lock for this project\n");
+		send(sock, "error", 8, 0);
+		return NULL;
+	}
+	int fd = open(historyPath, O_RDONLY);
+	struct stat fileStat;
+	char fileSize[1000];
+	fstat(fd, &fileStat);
+	sprintf(fileSize, "%d", fileStat.st_size);
+	send(sock, fileSize, 1000, 0);
+	sleep(1);
+	int sent;
+	int remaining = fileStat.st_size;
+	
+	while( (remaining > 0) && ((sent = sendfile(sock, fd, NULL, 1000)) > 0) ){
+		remaining = remaining - sent;
+	}
+	close(fd);	
+	pthread_mutex_unlock(&(ptr->lock));
 	return NULL;
 }
 
@@ -235,6 +332,17 @@ void * create(void * tArgs){
 	}
 	
 	close(fd);
+	
+	
+	char * historyPath = malloc((strlen(projDir)+strlen("/.History") + 2));
+	strcpy(historyPath, projDir);
+	strcat(historyPath, "/.History");
+	
+	int fx = open(historyPath, O_CREAT | O_WRONLY | O_TRUNC, S_IWUSR | S_IRUSR);
+	write(fx, "create\n", 7);
+	write(fx, "1", 1);
+	write(fx, "\n", 1);
+	close(fx);
 	
 	pthread_mutex_unlock(&masterLock);
 	return NULL;
@@ -513,6 +621,22 @@ void * rollback(void * tArgs){
 	}else{
 		send(sock, "success", 30, 0);
 	}
+	
+	/////////////////////
+	char * historyPath = malloc((strlen(projDir)+strlen("/.History") + 2));
+	strcpy(historyPath, projDir);
+	strcat(historyPath, "/.History");
+	
+	int fd = open(historyPath, O_WRONLY | O_APPEND);
+	write(fd, "\n", 1);
+	write(fd, "rollback ", 9);
+	write(fd, version, strlen(version));
+	write(fd, "\n", 1);
+	close(fd);
+	
+	
+	////////////////////////////
+	
 	pthread_mutex_unlock(&(ptr->lock));
 	return NULL;
 }
@@ -739,7 +863,7 @@ int push(char * dirp, int sock){
 			recv(sock, fileSize, 100, 0);
 			int size = atoi(fileSize);
 			printf("%d\n", size);
-			int fd = open(fullPath, O_CREAT | O_RDWR | O_TRUNC, S_IWUSR | S_IRUSR);
+			int fd = open(fullPath, O_CREAT | O_WRONLY | O_APPEND, S_IWUSR | S_IRUSR);
 			char * incoming = malloc(size + 1);
 			int remaining = size;
 			int written;
@@ -782,6 +906,40 @@ int push(char * dirp, int sock){
 				remaining = remaining - written;
 			}
 			close(fd);
+		}else if(strcmp(command, "C") == 0){
+			char * projectPath = malloc(strlen(dirp));
+			strcpy(projectPath, dirp);
+			int i;
+			int len = strlen(projectPath);
+			for(i = 1; i < len; i++){
+				if(projectPath[len-i] == '/'){
+					projectPath[len-i+1] = '\0';
+					break;
+				}
+			}
+			char * historyPath = malloc((strlen(projectPath)+strlen("/.History") + 2));
+			strcpy(historyPath, projectPath);
+			strcat(historyPath, ".History");
+			char fileSize[100];
+			recv(sock, fileSize, 100, 0);
+			int size = atoi(fileSize);
+			int fd = open(historyPath, O_WRONLY | O_APPEND);
+			char * incoming = malloc(size + 1);
+			int remaining = size;
+			int written;
+			printf("%s\n", historyPath);
+			write(fd, "\n", 1);
+			write(fd, "push\n", 5);
+			write(fd, version, strlen(version));
+			write(fd, "\n", 1);
+			while( (remaining > 0) && ((written = recv(sock, incoming, size, 0)) > 0) ){
+				printf("received %d\n", written);
+				printf("%s\n", incoming);
+				write(fd, incoming, written);
+				remaining = remaining - written;
+			}
+			close(fd);
+			break;
 		}else{
 			printf("invalid command from commit file\n");
 		}
@@ -1016,6 +1174,9 @@ int main(int argc, char** argv){
 			}else if(strcmp(command, "upgrade") == 0){
 				pthread_t id;
 				pthread_create(&id, NULL, upgrade, (void *) args);
+			}else if(strcmp(command, "history") == 0){
+				pthread_t id;
+				pthread_create(&id, NULL, history, (void *) args);
 			}
 		}
 	}
