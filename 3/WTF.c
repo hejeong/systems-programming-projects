@@ -151,7 +151,7 @@ struct node* createManifestList(char * manifestPath, struct node * head){
      	  perror("Error opening file");
      	  return 0;
   	}
-	fscanf(fp, "%d\t%d", &num, &vNum);
+	fscanf(fp, "%d\t%d\n", &num, &vNum);
 	
 	int len = strlen(manifestPath);
 	char *last_two = &manifestPath[len-2];
@@ -678,9 +678,7 @@ int compCommit(struct node * cHead, struct node * sHead, char * projDir){
 	struct node * cprev = cptr;
 	struct node * sprev = sptr;
 	while(cptr != NULL && sptr != NULL){
-		printf("loop1\n");
 		while(sptr != NULL){
-			printf("loop2\n");
 			if(strcmp(cptr->filePath, sptr->filePath) == 0){
 				if(strcmp(cptr->hashcode, sptr->hashcode) != 0){
 					if(cptr->version > sptr->version){
@@ -731,6 +729,16 @@ int commit(char * name, int sock){
 	struct stat st = {0};
 	if (stat(projDir, &st) == -1) {
 		printf("Project does not exist in local, nothing to commit\n");
+		send(sock, "invalid", 50, 0);
+		return 0;
+	}
+	
+	char * update = malloc(10 + strlen(projDir));
+	strcpy(update, projDir);
+	strcat(update, "/.Update");
+	struct stat st1 = {0};
+	if(stat(update, &st1) != -1) {
+		printf("Cannot commit with an active update file\n");
 		send(sock, "invalid", 50, 0);
 		return 0;
 	}
@@ -863,18 +871,46 @@ int push(char * name, int sock){
 	strcpy(projDir, "./\0");
 	strcat(projDir, name);
 	
-	struct stat st1 = {0};
+	struct stat st1 = {0}; //checks if project exists in local
 	if (stat(projDir, &st1) == -1) {
 		printf("Project does not exist in local, nothing to push\n");
 		send(sock, "invalid", 50, 0);
 		return 0;
+	}
+	char * updateDir = malloc(12 + strlen(projDir));
+	strcpy(updateDir, projDir);
+	strcat(updateDir, "/.Update");
+	
+	struct stat st3 = {0}; //checks if .update file has any M codes
+	if (stat(updateDir, &st3) == 1) {
+		
+		int file = open(updateDir, O_RDONLY);
+		struct stat fileStat;
+		char fileSize[100];
+		fstat(file, &fileStat);
+		int size = fileStat.st_size;
+		close(file);
+		
+		FILE * update = fopen(updateDir, "r");
+		char * line = malloc(size + 1);
+		char * command = malloc(2);
+		fgets(line, size, update);
+		while(fgets(line, size, update) != NULL){
+			sscanf(line, "%s", command);
+			if(strcmp(command, "M") == 0){
+				send(sock, "invalid", 50, 0);
+				printf("Files were modified since the last upgrade\n");
+				return 0;
+			}
+		}
+		
 	}
 	
 	char * commitDir = malloc(12 + strlen(projDir));
 	strcpy(commitDir, projDir);
 	strcat(commitDir, "/.commit\0");
 	 
-	struct stat st2 = {0};
+	struct stat st2 = {0};  //looks for a .commit
 	if (stat(commitDir, &st2) == -1) {
 		printf("Commit does not exist, please commit first before pushing\n");
 		send(sock, "invalid", 50, 0);
@@ -961,7 +997,6 @@ int push(char * name, int sock){
 		send(sock, "0", size, 0);
 		send(sock, "0", 2*SHA256_DIGEST_LENGTH, 0);
 		char * manifestS = updateManifestS(projDir);
-		printf("%s manifest s\n", manifestS);
 		int mfd = open(manifestS, O_RDONLY);
 		struct stat mfStat;
 		char mSize[50];
@@ -1002,7 +1037,17 @@ int push(char * name, int sock){
 			remainingCommit = remainingCommit - sentCommit;
 		}
 		close(fdCommit);
-	
+		char * originalManifest = malloc(strlen(projDir) + 10);
+		strcpy(originalManifest, projDir);
+		strcat(originalManifest, "/.Manifest");
+		FILE * fdms = fopen(manifestS, "r");
+		FILE * fdm = fopen(originalManifest, "w");
+		char c;
+		while((c = fgetc(fdms)) != EOF){
+			fwrite(&c, 1, 1, fdm);
+		}
+		fclose(fdms);
+		fclose(fdm);
 	}
 	return 0;
 }
@@ -1030,6 +1075,32 @@ void * getHistory(char * project, char * clientHistoryPath, int sock){
 		remaining = remaining - written;
 	}
 	close(fd);	
+}
+
+int currentVersion(char * name, int sock){
+	send(sock, "currentVersion", 50, 0);
+	send(sock, name, 2000, 0);
+	char sizeStr[10];
+	recv(sock, sizeStr, 50, 0);
+	int size = atoi(sizeStr);
+	if(size == 0){
+		printf("Project does not exist on the server\n");
+		return 0;
+	}
+	while(1){
+		char inc[2];
+		recv(sock, inc, 2, 0);
+		if(strcmp(inc, "R") == 0){
+			char * line = malloc(size + 1);
+			char * version = malloc(10);
+			char * filePath = malloc(size);
+			recv(sock, line, size, 0);
+			sscanf(line, "%s\t%s\t%*s", version, filePath);
+			printf("File: %s ----------- Version: %s\n", filePath, version);
+		}else{
+			break;
+		}
+	}
 }
 int main(int argc, char ** argv){
 	if(!(argc >= 2)){
@@ -1126,6 +1197,8 @@ int main(int argc, char ** argv){
 		rollback(name, socketfd, argv[3]);
 	}else if(strcmp(command, "commit") == 0){
 		commit(name, socketfd);
+	}else if(strcmp(command, "currentversion") == 0){
+		currentVersion(name, socketfd);
 	}else if(strcmp(command, "push") == 0){
 		push(name, socketfd);
 	}else if(strcmp(command, "update") == 0){
