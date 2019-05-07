@@ -46,7 +46,7 @@ int getFileSizeInBytes(const char* path){
 	int size = fileStat.st_size;
 	return size;
 }
-
+//creates hashcode from file at filepath
 char * createHashcode(char * fileStream, size_t length, char* buffer){
 	int i = 0;
 	char shaConverted[2];
@@ -78,17 +78,16 @@ char * readFileAndHash(char* filePath, char* hashcode){
 	int closeStatus = close(fileDesc);
 	return hashcode;
 }
-
+//prepares directories to put file in
 int makeDirectories(char * dir){
 	char * test = malloc(strlen(dir) + 3);
-	printf("making directories for %s\n", dir);
 	strcpy(test, "\0");
 	int i;
 	for(i = 2; i < strlen(dir); i++){
 		if(dir[i] == '/'){
 			struct stat st = {0};
 			if (stat(test, &st) == -1) {
-				printf("making this directory %s\n", test);
+
 				mkdir(test, 0700);
 			}
 		}
@@ -126,7 +125,8 @@ void * upgrade(void * tArgs){
 		send(sock, "error", 8, 0);
 		return NULL;
 	}
-	
+	send(sock, "success", 50, 0);
+	//receives data from client until no more data remains, and client will send NA
 	while(1){
 		recv(sock, fileName, 1000, 0);
 		if(strcmp(fileName, "NA") == 0){
@@ -307,7 +307,6 @@ void * create(void * tArgs){
 	char * manifest = malloc(12 + strlen(verDir));
 	strcpy(manifest, verDir);
 	strcat(manifest, "/.Manifest");
-	printf("%s\n", manifest);
 	int fd = open(manifest, O_CREAT | O_RDWR | O_TRUNC, S_IRWXU | S_IRWXG);
 	if(fd == -1){
 		printf("unable to write manifest\n");
@@ -454,7 +453,7 @@ void * destroyP(void * tArgs){
 	
 	return NULL;
 }
-
+//sends all the files listed in the manifest at dir
 int sendAll(char * dir, int sock){
 	FILE * fd;
 	char * manifest = malloc(12 + strlen(dir));
@@ -467,12 +466,12 @@ int sendAll(char * dir, int sock){
 		return 0;
 	}
 	char str[50];
-	fscanf(fd, "%s\t%*s\n", str);
+	fscanf(fd, "%s\t%*s\n", str); //reads how many files there are in the manifest
 	send(sock, str, strlen(str), 0);
 	sleep(1);
 	char line[1000];
 	char buffer[2000];
-	while(fgets(line, 1000, fd)){
+	while(fgets(line, 1000, fd)){ //reads every line of the manifest
 		sscanf(line, "%*d %s", buffer);
 		char * file = malloc(strlen(dir) + strlen(buffer));
 		strcpy(file, dir);
@@ -572,7 +571,7 @@ void * checkout(void * tArgs){
 	strcat(projDir, "/\0");
 	strcat(projDir, version);
 	strcat(projDir, "/\0");
-	sendAll(projDir, sock);
+	sendAll(projDir, sock); 
 	free(projDir);
 	free(dirp);
 	free(name);
@@ -631,7 +630,7 @@ void * rollback(void * tArgs){
 			continue;	
 		}
 		int check = atoi(dent->d_name);
-		if(check > ver){
+		if(check > ver){ //deletes every folder with a higher version number
 			rolled = 1;
 			char * delete = malloc(strlen(projDir) + strlen(dent->d_name) + 3);
 			strcpy(delete, projDir);
@@ -665,7 +664,7 @@ void * rollback(void * tArgs){
 	pthread_mutex_unlock(&(ptr->lock));
 	return NULL;
 }
-
+//gets the number to store the new commit as
 char * getCommitNum(char * path){
 	DIR *dir;
 	struct dirent *dent;
@@ -774,12 +773,16 @@ void * commit(void * tArgs){
 	if(strcmp(fileSize,"error") == 0){
 		printf("Client needs to sync with server first\n");
 	}
-	int size = atoi(fileSize);
+	int size = atoi(fileSize); //creates the commit folder and prepares to receive the commit file to store as an active commit
 	char * commit = malloc(30 + strlen(version) + strlen(dirp));
 	strcpy(commit, dirp);
 	strcat(commit, "/\0");
 	strcat(commit, version);
 	strcat(commit, "/.commits\0");
+	struct stat st = {0};
+	if (stat(commit, &st) == -1){
+		mkdir(commit, 0700);
+	}
 	char * commitNum = getCommitNum(commit);
 	strcat(commit, "/\0");
 	strcat(commit, commitNum);
@@ -804,7 +807,6 @@ void * commit(void * tArgs){
 }
 
 int duplicate(char * oldDir, char * newDir){
-	printf("preparing to duplicate %s\n", oldDir);
 	DIR *dir;
 	struct dirent *dent;
 	//open directory
@@ -824,15 +826,14 @@ int duplicate(char * oldDir, char * newDir){
 		char * path = malloc(strlen(oldDir) + strlen(dent->d_name) + 3);
 		strcpy(path, oldDir);
 		strcat(path, "/\0");
-		strcat(path, dent->d_name);
-		printf("copying %s\n", path);
+		strcat(path, dent->d_name); 
 		int type = regularFileOrDirectory(path);
 		char * newDirP = malloc(strlen(newDir) + strlen(dent->d_name) + 3);
 		strcpy(newDirP, newDir);
 		strcat(newDirP, "/\0");
 		strcat(newDirP, dent->d_name);
 		if(type == 0){
-			if(strcmp(dent->d_name, ".commits") != 0){
+			if(strcmp(dent->d_name, ".commits") != 0){ //skips the commits folder
 				struct stat st = {0};
 				if (stat(newDirP, &st) == -1) {
 					mkdir(newDirP, 0700);
@@ -892,13 +893,11 @@ int push(char * dirp, int sock){
 			char fileSize[100];
 			recv(sock, fileSize, 100, 0);
 			int size = atoi(fileSize);
-			printf("%d\n", size);
 			int fd = open(fullPath, O_CREAT | O_WRONLY | O_APPEND, S_IWUSR | S_IRUSR);
 			char * incoming = malloc(size + 1);
 			int remaining = size;
 			int written;
 			while( (remaining > 0) && ((written = recv(sock, incoming, size, 0)) > 0) ){
-				printf("received %d\n", written);
 				write(fd, incoming, written);
 				remaining = remaining - written;
 			}
@@ -914,7 +913,6 @@ int push(char * dirp, int sock){
 			int file = open(manifest, O_CREAT | O_RDWR | O_TRUNC, S_IWUSR | S_IRUSR);
 			
 			char * incoming = malloc(size + 1);
-			printf("matched %d writing %s bytes in %s\n", n, manifestSize, manifest);
 			int remaining = size;
 			int written;
 			while( (remaining > 0) && ((written = recv(sock, incoming, size, 0)) > 0) ){
@@ -928,13 +926,11 @@ int push(char * dirp, int sock){
 			char fileSize[100];
 			recv(sock, fileSize, 100, 0);
 			int size = atoi(fileSize);
-			printf("%d\n", size);
 			int fd = open(fullPath, O_RDWR | O_TRUNC, S_IWUSR | S_IRUSR);
 			char * incoming = malloc(size + 1);
 			int remaining = size;
 			int written;
 			while( (remaining > 0) && ((written = recv(sock, incoming, size, 0)) > 0) ){
-				printf("received %d\n", written);
 				write(fd, incoming, written);
 				remaining = remaining - written;
 			}
@@ -961,14 +957,11 @@ int push(char * dirp, int sock){
 			char * incoming = malloc(size + 1);
 			int remaining = size;
 			int written;
-			printf("%s\n", historyPath);
 			write(fd, "\n", 1);
 			write(fd, "push\n", 5);
 			write(fd, version, strlen(version));
 			write(fd, "\n", 1);
 			while( (remaining > 0) && ((written = recv(sock, incoming, size, 0)) > 0) ){
-				printf("received %d\n", written);
-				printf("%s\n", incoming);
 				write(fd, incoming, written);
 				remaining = remaining - written;
 			}
@@ -983,9 +976,9 @@ int push(char * dirp, int sock){
 	}
 	return 0;
 }
-
+//creates the new version directory to duplicate the repository, then executes push
 int prepPush(char * dirp, int ver, int sock){
-	char version[10];
+	char version[10]; 
 	sprintf(version, "%d", ver);
 	char versionInc[10];
 	sprintf(versionInc, "%d", ver + 1);
@@ -1006,7 +999,7 @@ int prepPush(char * dirp, int ver, int sock){
 	free(oldDir);
 	return 0;
 }
-
+//makes sure everything is in place to push
 void * checkPush(void * tArgs){
 	struct multiArgs * args = (struct multiArgs *) tArgs;
 	char * name = malloc(strlen(args->name) + 1);
@@ -1024,7 +1017,6 @@ void * checkPush(void * tArgs){
 				printf("unable to lock this project\n");
 				return NULL;
 			}
-			printf("locked\n");
 			locked = 1;
 			break;
 		}
@@ -1134,7 +1126,6 @@ void * currentVersion(void * tArgs){
 				printf("unable to lock this project\n");
 				return NULL;
 			}
-			printf("locked\n");
 			locked = 1;
 			break;
 		}
@@ -1185,7 +1176,7 @@ void * currentVersion(void * tArgs){
 	fstat(file, &fileStat);
 	int size = fileStat.st_size;
 	close(file);
-	
+	//iterates through manifest
 	FILE * fd = fopen(path, "r");
 	char * line = malloc(size + 1);
 	char * sizeStr = malloc(50);
@@ -1194,7 +1185,7 @@ void * currentVersion(void * tArgs){
 	fgets(line, size, fd);
 	while(fgets(line, size, fd) != NULL){
 		send(sock, "R", 2, 0);
-		int n = send(sock, line, size, 0);
+		send(sock, line, size, 0);
 	}
 	send(sock, "S", 2, 0);
 	free(sizeStr);
@@ -1277,7 +1268,6 @@ int main(int argc, char** argv){
 			args->socket = comm;
 			pthread_t id;
 			pthread_create(&id, NULL, create, (void *) args);
-			//create(projDir, comm, name);
 		}else{
 			struct stat st2 = {0};
 			if (stat(projDir, &st2) == -1) {

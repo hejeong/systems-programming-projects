@@ -47,7 +47,7 @@ int getFileSizeInBytes(const char* path){
 	int size = fileStat.st_size;
 	return size;
 }
-
+//adds a new node to the linked list of all manifest entries
 struct node* addFileToList(int version, char* filePath, char* hashcode, struct node* head, char *UMAD){
 	struct node * current = head;
 	if(UMAD == NULL){
@@ -96,6 +96,7 @@ struct node* addFileToList(int version, char* filePath, char* hashcode, struct n
 	}
 	return head;
 }
+//writes the linked list out to stdout
 void printList(struct node * head){
 	struct node * current = head;
 	while(current != NULL){
@@ -107,6 +108,7 @@ void printList(struct node * head){
 	   current = current->next;
 	}
 }
+//removes a node from the linked list
 struct node* removeFileFromList(char* filePath, struct node * head){
 	struct node * prev = head;
 	struct node * current = head;
@@ -139,7 +141,7 @@ struct node* removeFileFromList(char* filePath, struct node * head){
 	}
 	return head;
 }
-
+//reads a manifest and turns all entries to a linked list containing the data of each entry
 struct node* createManifestList(char * manifestPath, struct node * head){
 	FILE *fp;
 	char str[256];
@@ -168,7 +170,7 @@ struct node* createManifestList(char * manifestPath, struct node * head){
 	fclose(fp);
 	return head;
 }
-
+//writes the linked list into a manifest file
 void writeToManifest(char* action, char* manifestPath, struct node * head, int add){
 	FILE *fp;
 	struct node * current = head;
@@ -188,7 +190,7 @@ void writeToManifest(char* action, char* manifestPath, struct node * head, int a
 	}
 	fclose(fp);
 }
-
+//prints out the linked list to an update file
 void writeToUpdate(char* updatePath, struct node * head){
 	FILE *fp;
 	struct node * current = head;
@@ -204,7 +206,7 @@ void writeToUpdate(char* updatePath, struct node * head){
 	}
 	fclose(fp);
 }
-
+//creates hashcode for the file
 char * createHashcode(char * fileStream, size_t length, char* buffer){
 	int i = 0;
 	char shaConverted[2];
@@ -287,7 +289,6 @@ struct node * compareManifests(char * project, struct node * c_head, struct node
 						found = 1;
 						break;
 					}
-					// do i add this here?
 				}
 				found = 1;
 				s_head = removeFileFromList(c_curr->filePath, s_head);
@@ -334,7 +335,7 @@ int create(char * name, int sock){
 	char * projDir = malloc(3 + strlen(name));
 	strcpy(projDir, "./\0");
 	strcat(projDir, name);
-	
+	//checks if project exists on local
 	struct stat st2 = {0};
 	if (stat(projDir, &st2) == -1) {
 		mkdir(projDir, 0700);
@@ -347,7 +348,7 @@ int create(char * name, int sock){
 	strcpy(manifest, projDir);
 	strcat(manifest, "/.Manifest");
 	int fd = open(manifest, O_CREAT | O_RDWR | O_TRUNC, S_IWUSR | S_IRUSR);
-	
+	//opens manifest to write in
 	int remaining = size;
 	int written;
 	while( (remaining > 0) && ((written = recv(sock, buffer, size, 0)) > 0) ){
@@ -370,16 +371,15 @@ int destroy(char * name, int sock){
 	}
 	return 0;
 }
+//prepares directories to put file in
 int makeDirectories(char * dir){
 	char * test = malloc(strlen(dir) + 1);
 	strcpy(test, "\0");
-	printf("making directories for %s\n", dir);
 	int i;
 	for(i = 2; i < strlen(dir); i++){
 		if(dir[i] == '/'){
 			struct stat st = {0};
 			if (stat(test, &st) == -1) {
-				printf("making this directory %s\n", test);
 				mkdir(test, 0700);
 			}
 		}
@@ -493,6 +493,12 @@ void upgrade(char* project, char* clientManifestPath, int sock){
 	sleep(1);
 	send(sock, project, 2000, 0);
 	sleep(1);
+	char buffer[50];
+	recv(sock, buffer, 50, 0);
+	if(strcmp(buffer, "error") == 0){
+		printf("project does not exist on the server\n");
+		return;
+	}
 	fp = fopen(updatePath , "r");	
 	if(fp == NULL) {
      	  perror("No update file. Please run update <project name> first, then upgrade.");
@@ -534,7 +540,7 @@ void upgrade(char* project, char* clientManifestPath, int sock){
 	ret = remove(updatePath);
 	return;
 }
-
+//receives all files listed in the manifest of a given project
 int checkout(char * name, int sock){
 	char * projDir = malloc(3 + strlen(name));
 	strcpy(projDir, "./\0");
@@ -569,11 +575,9 @@ int checkout(char * name, int sock){
 		strcat(file, directory);
 		makeDirectories(file);
 		recv(sock, buffer, 1000, 0);
-		printf("writing to %s\n", file);
 		size = atoi(buffer);
 		int remaining = size;
 		int written;
-		printf("size is %d\n", size);
 		int fd = open(file, O_CREAT | O_RDWR | O_TRUNC, S_IWUSR | S_IRUSR);
 		char * inc = malloc(size + 1);
 		while( (remaining > 0) && ((written = recv(sock, inc, size, 0)) > 0) ){
@@ -638,7 +642,6 @@ int createManifestS(char * projDir, int sock, int size){
 	int remaining = size;
 	int written;
 	while( (remaining > 0) && ((written = recv(sock, incoming, size, 0)) > 0) ){
-		printf("received %d\n", written);
 		write(fd, incoming, written);
 		remaining = remaining - written;
 	}
@@ -663,7 +666,7 @@ struct node * rehash(struct node * cHead, char * projDir){
 	}
 	return cHead;
 }
-
+//compares client manifest and server manifest to create a commit file
 int compCommit(struct node * cHead, struct node * sHead, char * projDir){
 	char * path = malloc(strlen(projDir) + 10);
 	strcpy(path, projDir);
@@ -677,7 +680,7 @@ int compCommit(struct node * cHead, struct node * sHead, char * projDir){
 	}
 	struct node * cprev = cptr;
 	struct node * sprev = sptr;
-	while(cptr != NULL && sptr != NULL){
+	while(cptr != NULL && sptr != NULL){//goes through two linked lists of client manifest and server manifest
 		while(sptr != NULL){
 			if(strcmp(cptr->filePath, sptr->filePath) == 0){
 				if(strcmp(cptr->hashcode, sptr->hashcode) != 0){
@@ -709,6 +712,7 @@ int compCommit(struct node * cHead, struct node * sHead, char * projDir){
 		sprev = sptr;
 		cptr = cptr->next;
 	}
+	//handles the leftovers in each list
 	while(cHead != NULL){
 		fprintf(fd, "A\t%d\t%s\t%s\n", cHead->version, cHead->filePath, cHead->hashcode);
 		cHead = cHead->next;
@@ -758,7 +762,7 @@ int commit(char * name, int sock){
 		printf("Could not get manifest for this project\n");
 		return 0;
 	}
-	printf("manifest is this big %d\n", size);
+	//writes out the server manifest
 	createManifestS(projDir, sock, size);
 	
 	FILE * cfd;
@@ -785,7 +789,7 @@ int commit(char * name, int sock){
 	fclose(sfd);
 	struct node * cHead = NULL;
 	struct node * sHead = NULL;
-	
+	//turns both manifests to linked lists
 	cHead = createManifestList(clientMan, cHead);
 	sHead = createManifestList(serverMan, sHead);
 	
@@ -838,7 +842,6 @@ char * updateManifestS(char * projDir){
 	char * version = malloc(10);
 	
 	while(fgets(line, size, fd) != NULL){
-		printf("read %s\ntotal file is this big %d\n", line, size);
 		sscanf(line, "%s\t%s\t%s\t%s", command, version, filePath, hash);
 		if(strcmp(command, "D") == 0){
 			numFiles = numFiles - 1;
@@ -917,15 +920,13 @@ int push(char * name, int sock){
 		return 0;
 	}
 	
-	send(sock, "push", 50, 0);
+	send(sock, "push", 50, 0); //server tells client if its ready to receive a hash of the commit file to compare with active commits
 	send(sock, name, 2000, 0);
 	char buffer[50];
 	recv(sock, buffer, 50, 0);
-	printf("received %s\n", buffer);
 	if(strcmp(buffer, "send") == 0){
 		char hashcode[2*SHA256_DIGEST_LENGTH];
 		strcpy(hashcode,readFileAndHash(commitDir, hashcode));
-		printf("sending %s\n", hashcode);
 		send(sock, hashcode, 256, 0);
 	}else if(strcmp(buffer, "dont") == 0){
 		printf("Please commit to server first\n");
@@ -939,7 +940,7 @@ int push(char * name, int sock){
 	if(strcmp(buffer, "no match") == 0){
 		printf("The current commit does not exist on the server, please commit first\n");
 		return 0;
-	}else if(strcmp(buffer, "success") == 0){
+	}else if(strcmp(buffer, "success") == 0){ //if server found a matching commit
 		printf("got success\n");
 		char * path = malloc(strlen(projDir) + 10);
 		strcpy(path, projDir);
@@ -960,8 +961,7 @@ int push(char * name, int sock){
 		char * hash = malloc(2*SHA256_DIGEST_LENGTH + 1);
 		char * filePath = malloc(size + 1);
 		char * version = malloc(10);
-		while(fgets(line, size, fd) != NULL){
-			printf("read %s\ntotal file is this big %d\n", line, size);
+		while(fgets(line, size, fd) != NULL){ //sends server all needed files on the commit file
 			sscanf(line, "%s\t%s\t%s\t%s", command, version, filePath, hash);
 			
 			send(sock, command, 2, 0);
@@ -992,7 +992,7 @@ int push(char * name, int sock){
 		}
 		close(file);
 		fclose(fd);
-		send(sock, "M", 2, 0);
+		send(sock, "M", 2, 0); //prepares server to receive manifest
 		send(sock, "0", 10, 0);
 		send(sock, "0", size, 0);
 		send(sock, "0", 2*SHA256_DIGEST_LENGTH, 0);
@@ -1015,7 +1015,7 @@ int push(char * name, int sock){
 		}
 		close(mfd);
 		
-		send(sock, "C", 2, 0);
+		send(sock, "C", 2, 0); //prepares server to receive commit
 		
 		int fdCommit = open(commitDir, O_RDONLY);
 		printf("%s\n", commitDir);
@@ -1048,6 +1048,7 @@ int push(char * name, int sock){
 		}
 		fclose(fdms);
 		fclose(fdm);
+		remove(commitDir);
 	}
 	return 0;
 }
@@ -1057,6 +1058,10 @@ void * getHistory(char * project, char * clientHistoryPath, int sock){
 	send(sock, project, 2000, 0);
 	char buffer[1000];
 	recv(sock, buffer, 1000, 0);
+	if(strcmp(buffer, "error") == 0){
+		printf("project does not exist on the server\n");
+		return NULL;
+	}
 	int size = atoi(buffer);
 	printf("%d\n", size);
 	char * projDir = malloc(3 + strlen(project));
@@ -1169,7 +1174,7 @@ int main(int argc, char ** argv){
 	
 	address.sin_family = AF_INET;
 	address.sin_port = htons(port);
-	addr.sin_addr.s_addr = inet_addr(ip);
+	address.sin_addr.s_addr = inet_addr(ip);
 
 	int socketfd = socket(AF_INET,SOCK_STREAM, 0);
 	if (socketfd <= 0){
