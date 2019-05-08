@@ -4,7 +4,7 @@ WTF: WTF.c
 	gcc -O WTF.c -o WTF -lssl -lcrypto
 
 WTFserver: WTFserver.c
-	gcc -O WTFserver.c -o WTFserver -lpthread -lssl -lcrypto
+	gcc -O WTFserver.c -o WTFserver -lpthread -lssl -lcrypto -lz
 	
 clean:
 	rm -rf WTF WTFserver

@@ -1,0 +1,49 @@
+Each test continues on from the previous
+
+Test 1
+	Run every command with the right amount of arguments before running configure
+		expect every command to gracefully fail as there are no existing projects yet and no network connection arguments
+Test 2
+	Run configure without right number of arguments
+		expect to gracefully fail
+Test 3
+	Run configure correctly 
+		success
+Test 4
+	Run all commands with no arguments
+		gracefully fail every time
+Test 5
+	Create p1
+	Destroy p1
+		success
+Test 6
+	Create p1
+	Create local file test.txt in p1
+	Create local file test1.txt in p1
+	Add p1 test.txt
+	Commit p1
+	Push p1
+	Add p1 test1.txt
+	Commit p1
+	Push p1
+	Delete local copy of p1
+	Checkout p1
+		the existence of a local copy of p1, with test.txt and test1.txt and manifest version 3
+Test 7
+	Add p1 nonexistent file
+		gracefully fail
+Test 8
+	Remove p1 test.txt
+	Update p1
+	Commit p1
+	Push p1
+		success, with the server manifest not containing test.txt
+Test 9
+	Add p1 folder/test.txt
+	Remove p1 folder/test.txt
+		success
+Test 10
+	Rollback p1 to 1
+	Commit p1
+	Push p1
+		gracefully fail as manifest versions are not the same

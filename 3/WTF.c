@@ -54,12 +54,12 @@ struct node* addFileToList(int version, char* filePath, char* hashcode, struct n
 		while(current != NULL){
 			if(strcmp(current->filePath, filePath) == 0 && strcmp(current->hashcode, hashcode) != 0){
 				numFiles = numFiles - 1;
-				printf("File already exists. Changes were made.\n");
+				//printf("File already exists. Changes were made.\n");
 				strcpy(current->hashcode, hashcode);
 				return head;
 			}else if(strcmp(current->filePath, filePath) == 0 ){
 				numFiles = numFiles - 1;
-				printf("File already exists. No changes were made.\n");
+				//printf("File already exists. No changes were made.\n");
 				return head;
 			}
 			if(current->next != NULL){
@@ -247,6 +247,7 @@ void addCommand(char* filePath, char* filePathWithoutProj, char* manifestPath){
 	strcpy(hashcode, readFileAndHash(filePath, hashcode));
 	head = addFileToList(1,filePathWithoutProj,hashcode, head, NULL);
 	writeToManifest("add", manifestPath, head, 1);
+	printf("File added, if the file already existed, it was updated\n");
 }
 
 void removeCommand(char * filePathWithoutProj, char* manifestPath){
@@ -255,6 +256,7 @@ void removeCommand(char * filePathWithoutProj, char* manifestPath){
 	head = createManifestList(manifestPath, head);
 	head = removeFileFromList(filePathWithoutProj, head);
 	writeToManifest("remove", manifestPath, head, -1);
+	printf("File removed\n");
 }
 
 struct node * compareManifests(char * project, struct node * c_head, struct node * s_head, struct node * updatedList){
@@ -678,6 +680,7 @@ int compCommit(struct node * cHead, struct node * sHead, char * projDir){
 		printf("Cannot write commit file\n");
 		return 0;
 	}
+	int empty = 1;
 	struct node * cprev = cptr;
 	struct node * sprev = sptr;
 	while(cptr != NULL && sptr != NULL){//goes through two linked lists of client manifest and server manifest
@@ -686,6 +689,7 @@ int compCommit(struct node * cHead, struct node * sHead, char * projDir){
 				if(strcmp(cptr->hashcode, sptr->hashcode) != 0){
 					if(cptr->version > sptr->version){
 						fprintf(fd, "U\t%d\t%s\t%s\n", cptr->version, cptr->filePath, cptr->hashcode);
+						empty = 0;
 					}else{
 						printf("Please sync with the repository first\n");
 						fclose(fd);
@@ -715,13 +719,20 @@ int compCommit(struct node * cHead, struct node * sHead, char * projDir){
 	//handles the leftovers in each list
 	while(cHead != NULL){
 		fprintf(fd, "A\t%d\t%s\t%s\n", cHead->version, cHead->filePath, cHead->hashcode);
+		empty = 0;
 		cHead = cHead->next;
 	}
 	while(sHead != NULL){
 		fprintf(fd, "D\t%d\t%s\t%s\n", sHead->version, sHead->filePath, sHead->hashcode);
+		empty = 0;
 		sHead = sHead->next;
 	}
 	fclose(fd);
+	if(empty == 1){
+		printf("Nothing to commit\n");
+		remove(path);
+		return 0;
+	}
 	return 1;
 }
 
@@ -903,6 +914,7 @@ int push(char * name, int sock){
 			if(strcmp(command, "M") == 0){
 				send(sock, "invalid", 50, 0);
 				printf("Files were modified since the last upgrade\n");
+				fclose(update);
 				return 0;
 			}
 		}
@@ -941,7 +953,6 @@ int push(char * name, int sock){
 		printf("The current commit does not exist on the server, please commit first\n");
 		return 0;
 	}else if(strcmp(buffer, "success") == 0){ //if server found a matching commit
-		printf("got success\n");
 		char * path = malloc(strlen(projDir) + 10);
 		strcpy(path, projDir);
 		strcat(path, "/.commit\0");
@@ -961,19 +972,20 @@ int push(char * name, int sock){
 		char * hash = malloc(2*SHA256_DIGEST_LENGTH + 1);
 		char * filePath = malloc(size + 1);
 		char * version = malloc(10);
-		while(fgets(line, size, fd) != NULL){ //sends server all needed files on the commit file
-			sscanf(line, "%s\t%s\t%s\t%s", command, version, filePath, hash);
-			
+		while(fgets(line, size, fd)){ //sends server all needed files on the commit file
+			int i = sscanf(line, "%s\t%s\t%s\t%s\n", command, version, filePath, hash);
+			if(i != 4){
+				continue;
+			}
 			send(sock, command, 2, 0);
 			send(sock, version, 10, 0);
 			send(sock, filePath, size, 0);
 			send(sock, hash, 2*SHA256_DIGEST_LENGTH, 0);
-			if(strcmp(command, "D") != 0){
+			if(strcmp(command, "A") == 0 || strcmp(command, "U") == 0){
 				char * fullPath = malloc(strlen(projDir) + strlen(filePath) + 3);
 				strcpy(fullPath, projDir);
 				strcat(fullPath, "/\0");
 				strcat(fullPath, filePath);
-				printf("sending %s\n", fullPath);
 				file = open(fullPath, O_RDONLY);
 				struct stat fStat;
 				char indSize[100];
@@ -981,10 +993,10 @@ int push(char * name, int sock){
 				sprintf(indSize, "%d", fStat.st_size);
 				send(sock, indSize, 100, 0);
 				int iSize = fStat.st_size;
-				
+				printf("%d\n", iSize);
 				int sent;
 				int remaining = size;
-				while( (remaining > 0) && ((sent = sendfile(sock, file, NULL, iSize)) > 0) ){
+				while( (remaining > 0) && ((sent = sendfile(sock, file, NULL, 1000)) > 0) ){
 					remaining = remaining - sent;
 				}
 				close(file);
@@ -1005,12 +1017,10 @@ int push(char * name, int sock){
 		
 		int n = send(sock, mSize, 50, 0);
 		int manifestSize = mfStat.st_size;
-		printf("%d     manifest is this big %s\n", n, mSize);
 		
 		int num;
 		int left = manifestSize;
 		while( (left > 0) && ((num = sendfile(sock, mfd, NULL, manifestSize)) > 0) ){
-			printf("sent %d\n", num);
 			left = left - num;
 		}
 		close(mfd);
@@ -1018,7 +1028,6 @@ int push(char * name, int sock){
 		send(sock, "C", 2, 0); //prepares server to receive commit
 		
 		int fdCommit = open(commitDir, O_RDONLY);
-		printf("%s\n", commitDir);
 		struct stat fileStatCommit;
 		char fileSizeCommit[100];
 		char versionN[100];
@@ -1049,6 +1058,8 @@ int push(char * name, int sock){
 		fclose(fdms);
 		fclose(fdm);
 		remove(commitDir);
+	}else{
+		printf("Could not create directory for new version\n");
 	}
 	return 0;
 }
@@ -1063,7 +1074,6 @@ void * getHistory(char * project, char * clientHistoryPath, int sock){
 		return NULL;
 	}
 	int size = atoi(buffer);
-	printf("%d\n", size);
 	char * projDir = malloc(3 + strlen(project));
 	strcpy(projDir, "./\0");
 	strcat(projDir, project);
@@ -1174,7 +1184,7 @@ int main(int argc, char ** argv){
 	
 	address.sin_family = AF_INET;
 	address.sin_port = htons(port);
-	address.sin_addr.s_addr = inet_addr(ip);
+	//address.sin_addr.s_addr = inet_addr(ip);
 
 	int socketfd = socket(AF_INET,SOCK_STREAM, 0);
 	if (socketfd <= 0){

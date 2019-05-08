@@ -12,6 +12,7 @@
 #include <pthread.h>
 #include <dirent.h>
 #include <openssl/sha.h>
+#include "zlib.h"
 struct node{
 	pthread_mutex_t lock;
 	char * name;
@@ -478,7 +479,6 @@ int sendAll(char * dir, int sock){
 		strcat(file, buffer);
 		int currentFd;
 		currentFd = open(file, O_RDONLY);
-		printf("sending this file %s\n", file);
 		send(sock, buffer, 1000, 0); //sends appropriate directory of file
 		//finds size of file
 		struct stat fileStat;
@@ -579,6 +579,62 @@ void * checkout(void * tArgs){
 	return NULL;
 }
 
+int untar(char * tar){
+	char * dirp = malloc(strlen(tar) + 1);
+	strcpy(dirp, tar);
+	dirp[strlen(tar) - 4] = '\0';
+	mkdir(dirp, 0700);
+	strcat(dirp, "/");
+	int file = open(tar, O_RDONLY);
+	struct stat fileStat;
+	fstat(file, &fileStat);
+	int size = fileStat.st_size;
+	close(file);
+	
+	FILE * fd = fopen(tar, "r");
+	char * line = malloc(size + 1);
+	char * filePath = malloc(size + 1);
+	char * type = malloc(2);
+	int bytes;
+	while(fgets(line, size, fd) != NULL){
+		printf("go\n");
+		sscanf(line, "%s\t%s\t%d\n", filePath, type, &bytes);
+		if(strcmp(type, "D") == 0){
+			mkdir(filePath, 0700);
+		}else if(strcmp(type, "R") == 0){
+			FILE * new = fopen(filePath, "w");
+			char * content = malloc(bytes + 1);
+			fread(content, 1, bytes, fd);
+			fwrite(content, 1, bytes, new);
+			fread(content, 1, 1, fd);
+			fclose(new);
+		}
+	}
+	fclose(fd);
+	free(line);
+	free(filePath);
+	remove(tar);
+	return 0;
+}
+
+int decompressFile(char * file){
+	char * decomp = malloc(strlen(file) + 1);
+	strcpy(decomp, file);
+	decomp[strlen(file) - 2] = '\0';
+	gzFile in = gzopen(file, "r");
+	FILE * out = fopen(decomp, "w");
+	char buffer[128];
+	int numRead = 0;
+	while((numRead = gzread(in, buffer, sizeof(buffer))) > 0){
+		fwrite(buffer, 1, numRead, out);
+	}
+	gzclose(in);
+	fclose(out);
+	remove(file);
+	untar(decomp);
+	free(decomp);
+}
+
 void * rollback(void * tArgs){
 	struct multiArgs * args = (struct multiArgs *) tArgs;
 	char * name = malloc(strlen(args->name) + 1);
@@ -626,7 +682,7 @@ void * rollback(void * tArgs){
 	int rolled = 0;
 	while((dent = readdir(dir)) != NULL){
 		// skip over [.] and [..]
-		if(!strcmp(".", dent->d_name) || !strcmp("..", dent->d_name)){
+		if(!strcmp(".", dent->d_name) || !strcmp("..", dent->d_name) || !strcmp(".History", dent->d_name)){
 			continue;	
 		}
 		int check = atoi(dent->d_name);
@@ -638,6 +694,16 @@ void * rollback(void * tArgs){
 			strcat(delete, dent->d_name);
 			destroy(delete);
 			free(delete);
+		}else if(check == ver){
+			
+			char * de = malloc(strlen(projDir) + strlen(dent->d_name) + 3);
+			strcpy(de, projDir);
+			strcat(de, "/\0");
+			strcat(de, dent->d_name);
+			if(de[strlen(de) - 1] == 'z'){
+				decompressFile(de);
+			}
+			free(de);
 		}
 	}
 	if(rolled == 0){
@@ -748,6 +814,7 @@ void * commit(void * tArgs){
 			ver = check;
 		}
 	}
+	closedir(dir);
 	char version[20];
 	sprintf(version, "%d", ver);
 	char * manifest = malloc(15 + strlen(version) + strlen(dirp));
@@ -772,6 +839,12 @@ void * commit(void * tArgs){
 	recv(sock, fileSize, 100, 0);
 	if(strcmp(fileSize,"error") == 0){
 		printf("Client needs to sync with server first\n");
+		close(mfd);
+		free(manifest);
+		free(dirp);
+		free(name);
+		pthread_mutex_unlock(&(ptr->lock));
+		return;
 	}
 	int size = atoi(fileSize); //creates the commit folder and prepares to receive the commit file to store as an active commit
 	char * commit = malloc(30 + strlen(version) + strlen(dirp));
@@ -796,6 +869,7 @@ void * commit(void * tArgs){
 		write(fd, incoming, written);
 		remaining = remaining - written;
 	}
+	close(mfd);
 	close(fd);
 	pthread_mutex_unlock(&(ptr->lock));
 	free(commit);
@@ -868,6 +942,7 @@ int push(char * dirp, int sock){
 	while(1){ //repeatedly receives commit lines from client until client says no more
 		char command[2];
 		char version[10];
+		int versionInt = atoi(version);
 		int size;
 		recv(sock, command, 2, 0);
 		recv(sock, version, 10, 0);
@@ -919,7 +994,7 @@ int push(char * dirp, int sock){
 				write(file, incoming, written);
 				remaining = remaining - written;
 			}
-			close(file);
+			int i = close(file);
 			free(manifest);
 			free(incoming);
 		}else if(strcmp(command, "U") == 0){  //updates an existing file to the file client sends
@@ -930,13 +1005,13 @@ int push(char * dirp, int sock){
 			char * incoming = malloc(size + 1);
 			int remaining = size;
 			int written;
-			while( (remaining > 0) && ((written = recv(sock, incoming, size, 0)) > 0) ){
+			while( (remaining > 0) && ((written = recv(sock, incoming, 1000, 0)) > 0) ){
 				write(fd, incoming, written);
 				remaining = remaining - written;
 			}
 			close(fd);
 			free(incoming);
-		}else if(strcmp(command, "C") == 0){
+		}else if(strcmp(command, "C") == 0){//ends loop with the command to write to history
 			char * projectPath = malloc(strlen(dirp));
 			strcpy(projectPath, dirp);
 			int i;
@@ -966,6 +1041,9 @@ int push(char * dirp, int sock){
 				remaining = remaining - written;
 			}
 			close(fd);
+			free(path);
+			free(hash);
+			free(fullPath);
 			break;
 		}else{
 			printf("invalid command from commit file\n");
@@ -976,6 +1054,105 @@ int push(char * dirp, int sock){
 	}
 	return 0;
 }
+
+int tarDir(char * dirp, int file){
+	DIR *dir;
+	struct dirent *dent;
+	//open directory
+	dir = opendir(dirp);
+	int fd = file;
+	if(file == -1){
+		char * compDir = malloc(strlen(dirp) + 5);
+		strcpy(compDir, dirp);
+		strcat(compDir, ".tar");
+		
+		fd = open(compDir, O_CREAT | O_RDWR | O_TRUNC, S_IRWXU | S_IRWXG);
+		write(fd, dirp, strlen(dirp));
+		write(fd, "\tD\t-1\n", 6);
+	}
+	while((dent = readdir(dir)) != NULL){
+		// skip over [.] and [..]
+		if(!strcmp(".", dent->d_name) || !strcmp("..", dent->d_name) || !strcmp(".commits", dent->d_name)){
+			continue;	
+		}
+		// dynamically allocate memory to create the path for file or directory
+		char * path = (char*)malloc(strlen(dirp)+strlen(dent->d_name)+2);
+		strcpy(path, dirp);
+		strcat(path, "/\0");
+		strcat(path, dent->d_name);
+		// check the file type [directory, regular file, neither]
+		int typeInt = regularFileOrDirectory(path);
+		char *fileType;
+		if(typeInt == 0){//recursively calls tar dir to write into same file descriptor
+			fileType = "Directory";
+			write(fd, path, strlen(path));
+			write(fd, "\tD\t-1\n", 6);
+			tarDir(path, fd);
+		}else if(typeInt == 1){
+			// writes file to tar file
+			fileType = "Regular File";
+			int uncomp = open(path, O_RDONLY);
+			struct stat fileStat;
+			fstat(uncomp, &fileStat);
+			int size = fileStat.st_size;
+			char sizeStr[50];
+			sprintf(sizeStr, "%d", size);
+			char * content = malloc(size);
+			read(uncomp, content, size);
+			printf("writing %d bytes of %s into %s\n", size, content, path);
+			write(fd, path, strlen(path));
+			write(fd, "\tR\t", 3);
+			write(fd, sizeStr, strlen(sizeStr));
+			write(fd, "\n", 1);
+			write(fd, content, size);
+			write(fd, "\n", 1);
+			close(uncomp);
+		}else {
+			fileType = "Neither";
+		}
+		free(path);
+	}
+	return fd;
+}
+
+int compressFile(char * dir){
+	char * outP = malloc(strlen(dir) + 4);
+	strcpy(outP, dir);
+	strcat(outP, ".z");
+	FILE * in = fopen(dir, "r");
+	gzFile out = gzopen(outP, "w");
+	char buffer[128];
+	int numRead = 0;
+	int total = 0;
+	while((numRead = fread(buffer, 1, sizeof(buffer), in)) > 0){
+		total = total + numRead;
+		gzwrite(out, buffer, numRead);
+	}
+	fclose(in);
+	gzclose(out);
+}
+
+
+//goes through a project directory and tars then compresses old version of the project
+char * tarOldVer(char * dirp, int ver){
+	char version[10];
+	sprintf(version, "%d", ver);
+	char * oldDir = malloc(strlen(dirp) + strlen(version) + 3);
+	strcpy(oldDir, dirp);
+	strcat(oldDir, "/\0");
+	strcat(oldDir, version);
+	int fd = tarDir(oldDir, -1);
+	close(fd);
+	destroy(oldDir);
+	char * tar = malloc(strlen(oldDir) + 5);
+	strcpy(tar, oldDir);
+	strcat(tar, ".tar");
+	compressFile(tar);
+	remove(tar);
+	free(oldDir);
+	return NULL;
+}
+
 //creates the new version directory to duplicate the repository, then executes push
 int prepPush(char * dirp, int ver, int sock){
 	char version[10]; 
@@ -994,7 +1171,10 @@ int prepPush(char * dirp, int ver, int sock){
 	
 	if(duplicate(oldDir, newDir) == 1){
 		push(newDir, sock);
+	}else{
+		send(sock, "no dir", 50, 0);
 	}
+	tarOldVer(dirp, ver);
 	free(newDir);
 	free(oldDir);
 	return 0;
@@ -1064,7 +1244,6 @@ void * checkPush(void * tArgs){
 	if(dir == NULL){
 		printf("Directory %s cannot be opened\n", path);
 		send(sock, "dont", 50, 0);
-		printf("sent dont\n");
 		pthread_mutex_unlock(&(ptr->lock));
 		return NULL;
 	}
@@ -1072,7 +1251,6 @@ void * checkPush(void * tArgs){
 	
 	char * code = malloc(256);
 	int received = recv(sock, code, 256, 0);
-	printf("%s\n%d\n", code, received);
 	while((dent = readdir(dir)) != NULL){ //compares the commit file client just sent with all active commit files in preparation of push
 		if(!strcmp(".", dent->d_name) || !strcmp("..", dent->d_name)){
 			continue;	
@@ -1085,11 +1263,9 @@ void * checkPush(void * tArgs){
 		
 		char hashcode[2*SHA256_DIGEST_LENGTH];
 		strcpy(hashcode,readFileAndHash(commit, hashcode));
-		printf("%s\n%d\n", code, received);
 		if(strcmp(code, hashcode) == 0){ //prepares to push if the hashcodes of a commit file and the client commit match
 			prepPush(dirp, ver, sock);
 			closedir(dir);
-			destroy(path);//deletes the commits folder
 			pthread_mutex_unlock(&(ptr->lock));
 			free(code);
 			free(commit);
